@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if docker-compose.yml exists
+if [ ! -f docker-compose.yml ]; then
+    echo -e "${RED}Error: docker-compose.yml not found!${NC}"
+    exit 1
+fi
+
+# Function to display usage
+function show_help {
+    echo -e "${GREEN}Laravel Docker Helper Script${NC}"
+    echo ""
+    echo "Usage: ./run [command]"
+    echo ""
+    echo "Available commands:"
+    echo "  ${YELLOW}up${NC}              Start all containers"
+    echo "  ${YELLOW}down${NC}            Stop all containers"
+    echo "  ${YELLOW}restart${NC}         Restart all containers"
+    echo "  ${YELLOW}build${NC}           Build/rebuild containers"
+    echo "  ${YELLOW}ps${NC}              Show running containers"
+    echo "  ${YELLOW}logs${NC}            Show container logs"
+    echo ""
+    echo "  ${YELLOW}php [cmd]${NC}       Run PHP command (e.g., ./run php -v)"
+    echo "  ${YELLOW}artisan [cmd]${NC}   Run artisan command (e.g., ./run artisan migrate)"
+    echo "  ${YELLOW}composer [cmd]${NC}  Run composer command (e.g., ./run composer install)"
+    echo "  ${YELLOW}npm [cmd]${NC}       Run npm command (e.g., ./run npm install)"
+    echo "  ${YELLOW}test${NC}            Run PHPUnit tests"
+    echo ""
+    echo "  ${YELLOW}mysql${NC}           Access MySQL CLI"
+    echo "  ${YELLOW}redis${NC}           Access Redis CLI"
+    echo "  ${YELLOW}bash${NC}            Access PHP container bash"
+    echo ""
+    echo "  ${YELLOW}fresh${NC}           Fresh database with seed"
+    echo "  ${YELLOW}migrate${NC}         Run migrations"
+    echo "  ${YELLOW}seed${NC}            Run database seeder"
+    echo "  ${YELLOW}cache-clear${NC}     Clear all Laravel caches"
+    echo ""
+}
+
+# Main command handler
+case "$1" in
+    # Docker commands
+    up)
+        echo -e "${GREEN}Starting containers...${NC}"
+        docker-compose up -d
+        ;;
+    down)
+        echo -e "${YELLOW}Stopping containers...${NC}"
+        docker-compose down
+        ;;
+    restart)
+        echo -e "${YELLOW}Restarting containers...${NC}"
+        docker-compose restart
+        ;;
+    build)
+        echo -e "${GREEN}Building containers...${NC}"
+        docker-compose build
+        ;;
+    ps)
+        docker-compose ps
+        ;;
+    logs)
+        docker-compose logs -f
+        ;;
+    
+    # PHP commands
+    php)
+        shift 1
+        docker-compose exec php php "$@"
+        ;;
+    artisan)
+        shift 1
+        docker-compose exec php php artisan "$@"
+        ;;
+    composer)
+        shift 1
+        docker-compose exec php composer "$@"
+        ;;
+    npm)
+        shift 1
+        docker-compose exec php npm "$@"
+        ;;
+    test)
+        docker-compose exec php php artisan test
+        ;;
+    
+    # Database commands
+    mysql)
+        docker-compose exec mysql mysql -u root -p
+        ;;
+    redis)
+        docker-compose exec redis redis-cli
+        ;;
+    
+    # Shell access
+    bash)
+        docker-compose exec php bash
+        ;;
+    
+    # Laravel shortcuts
+    fresh)
+        echo -e "${YELLOW}Refreshing database with seed...${NC}"
+        docker-compose exec php php artisan migrate:fresh --seed
+        ;;
+    migrate)
+        echo -e "${GREEN}Running migrations...${NC}"
+        docker-compose exec php php artisan migrate
+        ;;
+    seed)
+        echo -e "${GREEN}Running seeder...${NC}"
+        docker-compose exec php php artisan db:seed
+        ;;
+    cache-clear)
+        echo -e "${GREEN}Clearing all caches...${NC}"
+        docker-compose exec php php artisan cache:clear
+        docker-compose exec php php artisan config:clear
+        docker-compose exec php php artisan route:clear
+        docker-compose exec php php artisan view:clear
+        echo -e "${GREEN}All caches cleared!${NC}"
+        ;;
+    
+    # Help or unknown command
+    help|--help|-h|"")
+        show_help
+        ;;
+    *)
+        echo -e "${RED}Unknown command: $1${NC}"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
