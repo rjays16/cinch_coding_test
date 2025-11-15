@@ -7,22 +7,24 @@ import Dashboard from '../views/Dashboard.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: '/dashboard' // Redirect root to dashboard
   },
   {
     path: '/login',
     name: 'Login',
-    component: Login
+    component: Login,
+    meta: { guest: true } // Only for non-authenticated users
   },
   {
     path: '/register',
     name: 'Register',
-    component: Register
+    component: Register,
+    meta: { guest: true } // Only for non-authenticated users
   },
-  // Wrap dashboard with layout
   {
     path: '/',
     component: SellerLayout,
+    meta: { requiresAuth: true }, // Requires authentication
     children: [
       {
         path: 'dashboard',
@@ -66,6 +68,53 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// Check if user is authenticated
+function isAuthenticated() {
+  const token = localStorage.getItem('seller_token')
+  const user = localStorage.getItem('seller_user')
+  return !!(token && user)
+}
+
+// Navigation guard
+router.beforeEach((to, from, next) => {
+  const authenticated = isAuthenticated()
+
+  console.log('🔐 Route Guard:', {
+    to: to.path,
+    authenticated,
+    requiresAuth: to.matched.some(record => record.meta.requiresAuth),
+    guest: to.matched.some(record => record.meta.guest)
+  })
+
+  // Check if route requires authentication
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!authenticated) {
+      // Not authenticated, redirect to login
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      })
+    } else {
+      // Authenticated, allow access
+      next()
+    }
+  } 
+  // Check if route is for guests only (login/register)
+  else if (to.matched.some(record => record.meta.guest)) {
+    if (authenticated) {
+      // Already authenticated, redirect to dashboard
+      next('/dashboard')
+    } else {
+      // Not authenticated, allow access
+      next()
+    }
+  } 
+  else {
+    // No auth requirements, allow access
+    next()
+  }
 })
 
 export default router

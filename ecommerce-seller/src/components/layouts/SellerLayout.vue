@@ -21,7 +21,7 @@ import { ref } from 'vue'
 import SellerSidebar from './SellerSidebar.vue'
 import SellerHeader from './SellerHeader.vue'
 
-const sidebarOpen = ref(true) // ← Make sure this is true
+const sidebarOpen = ref(true)
 
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value

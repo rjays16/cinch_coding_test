@@ -3,6 +3,32 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { authService } from '@/services/authService'
+
+const router = useRouter()
+
+onMounted(async () => {
+  // Check if user is authenticated
+  if (authService.isAuthenticated()) {
+    
+    try {
+      // Validate token by calling profile endpoint
+      const result = await authService.validateToken()
+      
+      if (!result.valid) {
+        // Token is invalid, clear auth and redirect to login
+        authService.clearAuth()
+        router.push('/login')
+      }
+    } catch (error) {
+      // Error validating token, clear auth
+      authService.clearAuth()
+      router.push('/login')
+    }
+  }
+})
 </script>
 
 <style>

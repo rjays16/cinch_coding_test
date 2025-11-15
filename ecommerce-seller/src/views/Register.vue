@@ -18,6 +18,7 @@
                 v-model="formData.firstName"
                 placeholder="John"
                 @input="clearError('firstName')"
+                :disabled="isLoading"
               />
               <span v-if="errors.firstName" class="error-message">{{ errors.firstName }}</span>
             </div>
@@ -30,6 +31,7 @@
                 v-model="formData.lastName"
                 placeholder="Doe"
                 @input="clearError('lastName')"
+                :disabled="isLoading"
               />
               <span v-if="errors.lastName" class="error-message">{{ errors.lastName }}</span>
             </div>
@@ -43,6 +45,7 @@
               v-model="formData.storeName"
               placeholder="My Awesome Store"
               @input="clearError('storeName')"
+              :disabled="isLoading"
             />
             <span v-if="errors.storeName" class="error-message">{{ errors.storeName }}</span>
           </div>
@@ -55,6 +58,7 @@
               v-model="formData.email"
               placeholder="john@example.com"
               @input="clearError('email')"
+              :disabled="isLoading"
             />
             <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
           </div>
@@ -65,8 +69,9 @@
               type="tel"
               id="phone"
               v-model="formData.phone"
-              placeholder="+1 234 567 8900"
+              placeholder="+63 912 345 6789"
               @input="clearError('phone')"
+              :disabled="isLoading"
             />
             <span v-if="errors.phone" class="error-message">{{ errors.phone }}</span>
           </div>
@@ -80,6 +85,7 @@
                 v-model="formData.password"
                 placeholder="••••••••"
                 @input="clearError('password')"
+                :disabled="isLoading"
               />
               <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
             </div>
@@ -92,6 +98,7 @@
                 v-model="formData.confirmPassword"
                 placeholder="••••••••"
                 @input="clearError('confirmPassword')"
+                :disabled="isLoading"
               />
               <span v-if="errors.confirmPassword" class="error-message">{{ errors.confirmPassword }}</span>
             </div>
@@ -103,13 +110,31 @@
                 type="checkbox" 
                 v-model="formData.agreeTerms" 
                 @change="clearError('agreeTerms')"
+                :disabled="isLoading"
               />
               <span> I agree to the Terms & Conditions and Privacy Policy</span>
             </label>
             <span v-if="errors.agreeTerms" class="error-message">{{ errors.agreeTerms }}</span>
           </div>
 
-          <button type="submit" class="btn-register">Create Seller Account</button>
+          <!-- Success Message -->
+          <div v-if="successMessage" class="success-message">
+            <i class="fas fa-check-circle"></i>
+            {{ successMessage }}
+          </div>
+
+          <!-- General Error Message -->
+          <div v-if="generalError" class="general-error">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ generalError }}
+          </div>
+
+          <button type="submit" class="btn-register" :disabled="isLoading">
+            <span v-if="!isLoading">Create Seller Account</span>
+            <span v-else>
+              <i class="fas fa-spinner fa-spin"></i> Creating Account...
+            </span>
+          </button>
 
           <div class="divider">
             <span>or</span>
@@ -123,7 +148,6 @@
       </div>
     </div>
 
-    <!-- Right Side - Use RightSection Component -->
     <RightSection />
   </div>
 </template>
@@ -132,8 +156,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import RightSection from '@/components/RightSection.vue'
+import { authService } from '@/services/authService'
 
 const router = useRouter()
+const isLoading = ref(false)
+const successMessage = ref('')
+const generalError = ref('')
 
 const formData = ref({
   firstName: '',
@@ -159,6 +187,7 @@ const errors = ref({
 
 const clearError = (field) => {
   errors.value[field] = ''
+  generalError.value = ''
 }
 
 const validateForm = () => {
@@ -239,25 +268,71 @@ const validateForm = () => {
   return isValid
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
+  // Clear previous messages
+  successMessage.value = ''
+  generalError.value = ''
+
+  // Validate form
   if (!validateForm()) {
     return
   }
 
-  // Save to localStorage and redirect
-  localStorage.setItem('seller_token', 'dummy-token-12345')
-  localStorage.setItem('seller_user', JSON.stringify({
-    id: 1,
-    first_name: formData.value.firstName,
-    last_name: formData.value.lastName,
-    full_name: `${formData.value.firstName} ${formData.value.lastName}`,
-    store_name: formData.value.storeName,
-    email: formData.value.email,
-    phone: formData.value.phone,
-    role: 'seller'
-  }))
+  isLoading.value = true
 
-  router.push('/dashboard')
+  try {
+
+    // Call API to register
+    const response = await authService.register(formData.value)
+
+    // Check if response contains token and seller data
+    if (!response.token || !response.seller) {
+      throw new Error('Invalid response from server')
+    }
+
+    // Save token and seller data
+    localStorage.setItem('seller_token', response.token)
+    localStorage.setItem('seller_user', JSON.stringify(response.seller))
+
+    // Show success message
+    successMessage.value = 'Seller account created successfully! Redirecting to dashboard...'
+
+    // Redirect to dashboard after 1.5 seconds
+    setTimeout(() => {
+      router.push('/dashboard')
+    }, 1500)
+
+  } catch (error) {
+    isLoading.value = false
+
+    // Handle validation errors from Laravel
+    if (error.response?.status === 422) {
+      const backendErrors = error.response.data.errors
+      
+      // Map Laravel validation errors to form errors
+      if (backendErrors.first_name) {
+        errors.value.firstName = backendErrors.first_name[0]
+      }
+      if (backendErrors.last_name) {
+        errors.value.lastName = backendErrors.last_name[0]
+      }
+      if (backendErrors.store_name) {
+        errors.value.storeName = backendErrors.store_name[0]
+      }
+      if (backendErrors.email) {
+        errors.value.email = backendErrors.email[0]
+      }
+      if (backendErrors.phone) {
+        errors.value.phone = backendErrors.phone[0]
+      }
+      if (backendErrors.password) {
+        errors.value.password = backendErrors.password[0]
+      }
+    } else {
+      // General error
+      generalError.value = error.response?.data?.message || 'Registration failed. Please try again.'
+    }
+  }
 }
 </script>
 
@@ -269,7 +344,6 @@ const handleRegister = () => {
   overflow: hidden;
 }
 
-/* Left Side - Form Section */
 .form-section {
   flex: 0 0 40%;
   display: flex;
@@ -342,7 +416,12 @@ const handleRegister = () => {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* Error state */
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .form-group.has-error input {
   border-color: #dc3545;
 }
@@ -358,6 +437,38 @@ const handleRegister = () => {
   font-size: 0.85rem;
   margin-top: 0.5rem;
   font-weight: 500;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.success-message i {
+  font-size: 18px;
+}
+
+.general-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.general-error i {
+  font-size: 18px;
 }
 
 .checkbox-group {
@@ -382,6 +493,10 @@ const handleRegister = () => {
   flex-shrink: 0;
 }
 
+.checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
 .btn-register {
   width: 100%;
   padding: 1rem;
@@ -395,9 +510,15 @@ const handleRegister = () => {
   transition: all 0.3s;
 }
 
-.btn-register:hover {
+.btn-register:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-register:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .divider {
@@ -448,7 +569,6 @@ const handleRegister = () => {
   text-decoration: underline;
 }
 
-/* Responsive */
 @media (max-width: 968px) {
   .register-page {
     flex-direction: column;

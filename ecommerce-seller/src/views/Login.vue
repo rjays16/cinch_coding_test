@@ -17,6 +17,7 @@
               v-model="formData.email"
               placeholder="Enter your email"
               @input="clearError('email')"
+              :disabled="isLoading"
             />
             <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
           </div>
@@ -29,19 +30,25 @@
               v-model="formData.password"
               placeholder="Enter your password"
               @input="clearError('password')"
+              :disabled="isLoading"
             />
             <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
           </div>
 
           <div class="form-options">
             <label class="remember-me">
-              <input type="checkbox" v-model="formData.rememberMe" />
+              <input type="checkbox" v-model="formData.rememberMe" :disabled="isLoading" />
               <span>Remember me</span>
             </label>
             <a href="#" class="forgot-link">Forgot password?</a>
           </div>
 
-          <button type="submit" class="btn-login">Login to Dashboard</button>
+          <button type="submit" class="btn-login" :disabled="isLoading">
+            <span v-if="!isLoading">Login to Dashboard</span>
+            <span v-else>
+              <i class="fas fa-spinner fa-spin"></i> Logging in...
+            </span>
+          </button>
 
           <div class="divider">
             <span>or</span>
@@ -57,6 +64,14 @@
 
     <!-- Right Side - Use RightSection Component -->
     <RightSection />
+
+    <!-- Error Modal -->
+    <ErrorModal
+      :show="showErrorModal"
+      :title="errorTitle"
+      :message="errorMessage"
+      @close="closeErrorModal"
+    />
   </div>
 </template>
 
@@ -64,8 +79,16 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import RightSection from '@/components/RightSection.vue'
+import ErrorModal from '@/components/ErrorModal.vue'
+import { authService } from '@/services/authService'
 
 const router = useRouter()
+const isLoading = ref(false)
+
+// Modal state
+const showErrorModal = ref(false)
+const errorTitle = ref('Login Failed')
+const errorMessage = ref('')
 
 const formData = ref({
   email: '',
@@ -82,16 +105,18 @@ const clearError = (field) => {
   errors.value[field] = ''
 }
 
+const closeErrorModal = () => {
+  showErrorModal.value = false
+}
+
 const validateForm = () => {
   let isValid = true
   
-  // Reset errors
   errors.value = {
     email: '',
     password: ''
   }
 
-  // Email validation
   if (!formData.value.email) {
     errors.value.email = 'Email is required'
     isValid = false
@@ -100,7 +125,6 @@ const validateForm = () => {
     isValid = false
   }
 
-  // Password validation
   if (!formData.value.password) {
     errors.value.password = 'Password is required'
     isValid = false
@@ -112,25 +136,92 @@ const validateForm = () => {
   return isValid
 }
 
-const handleLogin = () => {
+const handleLogin = async () => {
+  // Clear previous errors
+  errors.value = {
+    email: '',
+    password: ''
+  }
+
+  // Validate form
   if (!validateForm()) {
     return
   }
 
-  // Save dummy seller data to localStorage
-  localStorage.setItem('seller_token', 'dummy-token-12345')
-  localStorage.setItem('seller_user', JSON.stringify({
-    id: 1,
-    first_name: 'John',
-    last_name: 'Doe',
-    full_name: 'John Doe',
-    store_name: 'My Awesome Store',
-    email: formData.value.email,
-    role: 'seller'
-  }))
+  isLoading.value = true
 
-  // Navigate to dashboard
-  router.push('/dashboard')
+  try {
+    // Call API to login
+    const response = await authService.login(
+      formData.value.email,
+      formData.value.password
+    )
+
+    // Check if response contains token and seller data
+    if (!response.token || !response.seller) {
+      throw new Error('Invalid response from server')
+    }
+
+    // Save token and seller data
+    localStorage.setItem('seller_token', response.token)
+    localStorage.setItem('seller_user', JSON.stringify(response.seller))
+
+    // Redirect to dashboard
+    router.push('/dashboard')
+
+  } catch (error) {
+    isLoading.value = false
+
+    console.error('Login error:', error)
+
+    // Handle different error types
+    if (error.response) {
+      const status = error.response.status
+      const errorData = error.response.data
+
+      if (status === 422) {
+        // Validation errors - show below fields (not in modal)
+        const backendErrors = errorData.errors
+        
+        if (backendErrors.email) {
+          errors.value.email = backendErrors.email[0]
+        }
+        if (backendErrors.password) {
+          errors.value.password = backendErrors.password[0]
+        }
+      } else if (status === 401) {
+        // Invalid password - show in modal
+        errorTitle.value = 'Invalid Credentials'
+        errorMessage.value = errorData.message || 'Invalid email or password. Please check your credentials and try again.'
+        showErrorModal.value = true
+      } else if (status === 404) {
+        // Seller not found - show in modal
+        errorTitle.value = 'Seller Not Found'
+        errorMessage.value = errorData.message || 'No seller account found with this email address. Please register as a seller first.'
+        showErrorModal.value = true
+      } else if (status === 403) {
+        // Forbidden - show in modal
+        errorTitle.value = 'Access Denied'
+        errorMessage.value = errorData.message || 'This account is not registered as a seller account.'
+        showErrorModal.value = true
+      } else {
+        // Other errors - show in modal
+        errorTitle.value = 'Login Failed'
+        errorMessage.value = errorData.message || 'Unable to login. Please try again later.'
+        showErrorModal.value = true
+      }
+    } else if (error.request) {
+      // Network error - show in modal
+      errorTitle.value = 'Connection Error'
+      errorMessage.value = 'Cannot connect to server. Please check your internet connection and try again.'
+      showErrorModal.value = true
+    } else {
+      // Other errors - show in modal
+      errorTitle.value = 'Error'
+      errorMessage.value = error.message || 'An unexpected error occurred. Please try again.'
+      showErrorModal.value = true
+    }
+  }
 }
 </script>
 
@@ -209,7 +300,12 @@ const handleLogin = () => {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* Error state */
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .form-group.has-error input {
   border-color: #dc3545;
 }
@@ -249,6 +345,10 @@ const handleLogin = () => {
   height: 16px;
 }
 
+.remember-me input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
 .forgot-link {
   color: #667eea;
   text-decoration: none;
@@ -272,9 +372,15 @@ const handleLogin = () => {
   transition: all 0.3s;
 }
 
-.btn-login:hover {
+.btn-login:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .divider {
