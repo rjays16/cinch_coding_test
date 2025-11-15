@@ -93,7 +93,7 @@
           <div class="form-group checkbox-group">
             <label class="checkbox-label">
               <input type="checkbox" v-model="formData.agreeTerms" required />
-              <span>I agree to the Terms & Conditions and Privacy Policy</span>
+              <span> I agree to the Terms & Conditions and Privacy Policy</span>
             </label>
           </div>
 
