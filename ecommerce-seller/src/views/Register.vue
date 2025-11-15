@@ -4,7 +4,7 @@
     <div class="form-section">
       <div class="form-container">
         <div class="logo-section">
-          <h1>Seller Page</h1>
+          <h1>Seller Portal </h1>
           <p class="subtitle">Create your seller account and start selling</p>
         </div>
 

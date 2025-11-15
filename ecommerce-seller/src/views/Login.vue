@@ -4,7 +4,7 @@
     <div class="form-section">
       <div class="form-container">
         <div class="logo-section">
-          <h1>Seller Page</h1>
+          <h1>Seller Portal</h1>
           <p class="subtitle">Welcome back! Login to manage your store</p>
         </div>
 
@@ -72,7 +72,36 @@ const formData = ref({
 })
 
 const handleLogin = () => {
-  alert(`Seller Login: ${formData.value.email}`)
+  // Validation
+  if (!formData.value.email) {
+    alert('Email is required')
+    return
+  }
+
+  if (!formData.value.password) {
+    alert('Password is required')
+    return
+  }
+
+  if (formData.value.password.length < 6) {
+    alert('Password must be at least 6 characters')
+    return
+  }
+
+  // Save dummy seller data to localStorage
+  localStorage.setItem('seller_token', 'dummy-token-12345')
+  localStorage.setItem('seller_user', JSON.stringify({
+    id: 1,
+    first_name: 'John',
+    last_name: 'Doe',
+    full_name: 'John Doe',
+    store_name: 'My Awesome Store',
+    email: formData.value.email,
+    role: 'seller'
+  }))
+
+  // Navigate to dashboard
+  router.push('/dashboard')
 }
 </script>
 

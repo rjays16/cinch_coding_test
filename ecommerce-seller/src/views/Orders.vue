@@ -1,6 +1,6 @@
 <template>
   <div style="padding: 20px;">
-    <h1>Products</h1>
-    <p>Product list coming soon...</p>
+    <h1>Orders</h1>
+    <p>Orders page coming soon...</p>
   </div>
 </template>
