@@ -4,97 +4,109 @@
     <div class="form-section">
       <div class="form-container">
         <div class="logo-section">
-          <h1>Seller Portal </h1>
+          <h1>Seller Portal</h1>
           <p class="subtitle">Create your seller account and start selling</p>
         </div>
 
         <form @submit.prevent="handleRegister" class="register-form">
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" :class="{ 'has-error': errors.firstName }">
               <label for="firstName">First Name</label>
               <input
                 type="text"
                 id="firstName"
                 v-model="formData.firstName"
                 placeholder="John"
-                required
+                @input="clearError('firstName')"
               />
+              <span v-if="errors.firstName" class="error-message">{{ errors.firstName }}</span>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" :class="{ 'has-error': errors.lastName }">
               <label for="lastName">Last Name</label>
               <input
                 type="text"
                 id="lastName"
                 v-model="formData.lastName"
                 placeholder="Doe"
-                required
+                @input="clearError('lastName')"
               />
+              <span v-if="errors.lastName" class="error-message">{{ errors.lastName }}</span>
             </div>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" :class="{ 'has-error': errors.storeName }">
             <label for="storeName">Store Name</label>
             <input
               type="text"
               id="storeName"
               v-model="formData.storeName"
               placeholder="My Awesome Store"
-              required
+              @input="clearError('storeName')"
             />
+            <span v-if="errors.storeName" class="error-message">{{ errors.storeName }}</span>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" :class="{ 'has-error': errors.email }">
             <label for="email">Email Address</label>
             <input
               type="email"
               id="email"
               v-model="formData.email"
               placeholder="john@example.com"
-              required
+              @input="clearError('email')"
             />
+            <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" :class="{ 'has-error': errors.phone }">
             <label for="phone">Phone Number</label>
             <input
               type="tel"
               id="phone"
               v-model="formData.phone"
               placeholder="+1 234 567 8900"
-              required
+              @input="clearError('phone')"
             />
+            <span v-if="errors.phone" class="error-message">{{ errors.phone }}</span>
           </div>
 
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" :class="{ 'has-error': errors.password }">
               <label for="password">Password</label>
               <input
                 type="password"
                 id="password"
                 v-model="formData.password"
                 placeholder="••••••••"
-                required
+                @input="clearError('password')"
               />
+              <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" :class="{ 'has-error': errors.confirmPassword }">
               <label for="confirmPassword">Confirm Password</label>
               <input
                 type="password"
                 id="confirmPassword"
                 v-model="formData.confirmPassword"
                 placeholder="••••••••"
-                required
+                @input="clearError('confirmPassword')"
               />
+              <span v-if="errors.confirmPassword" class="error-message">{{ errors.confirmPassword }}</span>
             </div>
           </div>
 
-          <div class="form-group checkbox-group">
+          <div class="form-group checkbox-group" :class="{ 'has-error': errors.agreeTerms }">
             <label class="checkbox-label">
-              <input type="checkbox" v-model="formData.agreeTerms" required />
+              <input 
+                type="checkbox" 
+                v-model="formData.agreeTerms" 
+                @change="clearError('agreeTerms')"
+              />
               <span> I agree to the Terms & Conditions and Privacy Policy</span>
             </label>
+            <span v-if="errors.agreeTerms" class="error-message">{{ errors.agreeTerms }}</span>
           </div>
 
           <button type="submit" class="btn-register">Create Seller Account</button>
@@ -134,12 +146,118 @@ const formData = ref({
   agreeTerms: false
 })
 
+const errors = ref({
+  firstName: '',
+  lastName: '',
+  storeName: '',
+  email: '',
+  phone: '',
+  password: '',
+  confirmPassword: '',
+  agreeTerms: ''
+})
+
+const clearError = (field) => {
+  errors.value[field] = ''
+}
+
+const validateForm = () => {
+  let isValid = true
+  
+  // Reset errors
+  errors.value = {
+    firstName: '',
+    lastName: '',
+    storeName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    agreeTerms: ''
+  }
+
+  // First Name validation
+  if (!formData.value.firstName.trim()) {
+    errors.value.firstName = 'First name is required'
+    isValid = false
+  }
+
+  // Last Name validation
+  if (!formData.value.lastName.trim()) {
+    errors.value.lastName = 'Last name is required'
+    isValid = false
+  }
+
+  // Store Name validation
+  if (!formData.value.storeName.trim()) {
+    errors.value.storeName = 'Store name is required'
+    isValid = false
+  }
+
+  // Email validation
+  if (!formData.value.email) {
+    errors.value.email = 'Email is required'
+    isValid = false
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
+    errors.value.email = 'Please enter a valid email address'
+    isValid = false
+  }
+
+  // Phone validation
+  if (!formData.value.phone) {
+    errors.value.phone = 'Phone number is required'
+    isValid = false
+  } else if (formData.value.phone.length < 10) {
+    errors.value.phone = 'Please enter a valid phone number'
+    isValid = false
+  }
+
+  // Password validation
+  if (!formData.value.password) {
+    errors.value.password = 'Password is required'
+    isValid = false
+  } else if (formData.value.password.length < 6) {
+    errors.value.password = 'Password must be at least 6 characters'
+    isValid = false
+  }
+
+  // Confirm Password validation
+  if (!formData.value.confirmPassword) {
+    errors.value.confirmPassword = 'Please confirm your password'
+    isValid = false
+  } else if (formData.value.password !== formData.value.confirmPassword) {
+    errors.value.confirmPassword = 'Passwords do not match'
+    isValid = false
+  }
+
+  // Terms validation
+  if (!formData.value.agreeTerms) {
+    errors.value.agreeTerms = 'You must agree to the terms and conditions'
+    isValid = false
+  }
+
+  return isValid
+}
+
 const handleRegister = () => {
-  if (formData.value.password !== formData.value.confirmPassword) {
-    alert('Passwords do not match!')
+  if (!validateForm()) {
     return
   }
-  alert(`Seller Registration: ${formData.value.storeName} - ${formData.value.email}`)
+
+  // Save to localStorage and redirect
+  localStorage.setItem('seller_token', 'dummy-token-12345')
+  localStorage.setItem('seller_user', JSON.stringify({
+    id: 1,
+    first_name: formData.value.firstName,
+    last_name: formData.value.lastName,
+    full_name: `${formData.value.firstName} ${formData.value.lastName}`,
+    store_name: formData.value.storeName,
+    email: formData.value.email,
+    phone: formData.value.phone,
+    role: 'seller'
+  }))
+
+  router.push('/dashboard')
 }
 </script>
 
@@ -222,6 +340,24 @@ const handleRegister = () => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Error state */
+.form-group.has-error input {
+  border-color: #dc3545;
+}
+
+.form-group.has-error input:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.error-message {
+  display: block;
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
 }
 
 .checkbox-group {

@@ -9,26 +9,28 @@
         </div>
 
         <form @submit.prevent="handleLogin" class="login-form">
-          <div class="form-group">
+          <div class="form-group" :class="{ 'has-error': errors.email }">
             <label for="email">Email Address</label>
             <input
               type="email"
               id="email"
               v-model="formData.email"
               placeholder="Enter your email"
-              required
+              @input="clearError('email')"
             />
+            <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" :class="{ 'has-error': errors.password }">
             <label for="password">Password</label>
             <input
               type="password"
               id="password"
               v-model="formData.password"
               placeholder="Enter your password"
-              required
+              @input="clearError('password')"
             />
+            <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
           </div>
 
           <div class="form-options">
@@ -71,20 +73,47 @@ const formData = ref({
   rememberMe: false
 })
 
-const handleLogin = () => {
-  // Validation
+const errors = ref({
+  email: '',
+  password: ''
+})
+
+const clearError = (field) => {
+  errors.value[field] = ''
+}
+
+const validateForm = () => {
+  let isValid = true
+  
+  // Reset errors
+  errors.value = {
+    email: '',
+    password: ''
+  }
+
+  // Email validation
   if (!formData.value.email) {
-    alert('Email is required')
-    return
+    errors.value.email = 'Email is required'
+    isValid = false
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
+    errors.value.email = 'Please enter a valid email address'
+    isValid = false
   }
 
+  // Password validation
   if (!formData.value.password) {
-    alert('Password is required')
-    return
+    errors.value.password = 'Password is required'
+    isValid = false
+  } else if (formData.value.password.length < 6) {
+    errors.value.password = 'Password must be at least 6 characters'
+    isValid = false
   }
 
-  if (formData.value.password.length < 6) {
-    alert('Password must be at least 6 characters')
+  return isValid
+}
+
+const handleLogin = () => {
+  if (!validateForm()) {
     return
   }
 
@@ -178,6 +207,24 @@ const handleLogin = () => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Error state */
+.form-group.has-error input {
+  border-color: #dc3545;
+}
+
+.form-group.has-error input:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.error-message {
+  display: block;
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
 }
 
 .form-options {
