@@ -37,10 +37,10 @@
 
           <div class="form-options">
             <label class="remember-me">
-              <input type="checkbox" v-model="formData.rememberMe" :disabled="isLoading" />
-              <span>Remember me</span>
-            </label>
-            <a href="#" class="forgot-link">Forgot password?</a>
+              <input type="checkbox" v-model="rememberMe" :disabled="isLoading" />
+                Remember me
+              </label>
+              <router-link to="/forgot-password" class="forgot-link">Forgot password?</router-link>
           </div>
 
           <button type="submit" class="btn-login" :disabled="isLoading">

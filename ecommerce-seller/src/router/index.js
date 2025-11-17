@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
+import ForgotPassword from '../views/ForgotPassword.vue'
+import ResetPassword from '../views/ResetPassword.vue'
 import SellerLayout from '../components/layouts/SellerLayout.vue'
 import Dashboard from '../views/Dashboard.vue'
 
@@ -19,6 +21,18 @@ const routes = [
     path: '/register',
     name: 'Register',
     component: Register,
+    meta: { guest: true } // Only for non-authenticated users
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
+    meta: { guest: true } // Only for non-authenticated users
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword,
     meta: { guest: true } // Only for non-authenticated users
   },
   {
@@ -80,14 +94,7 @@ function isAuthenticated() {
 // Navigation guard
 router.beforeEach((to, from, next) => {
   const authenticated = isAuthenticated()
-
-  console.log('🔐 Route Guard:', {
-    to: to.path,
-    authenticated,
-    requiresAuth: to.matched.some(record => record.meta.requiresAuth),
-    guest: to.matched.some(record => record.meta.guest)
-  })
-
+  
   // Check if route requires authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!authenticated) {
@@ -101,7 +108,7 @@ router.beforeEach((to, from, next) => {
       next()
     }
   } 
-  // Check if route is for guests only (login/register)
+  // Check if route is for guests only (login/register/forgot-password/reset-password)
   else if (to.matched.some(record => record.meta.guest)) {
     if (authenticated) {
       // Already authenticated, redirect to dashboard
