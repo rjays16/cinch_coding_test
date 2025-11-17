@@ -2,32 +2,107 @@
   <header class="header">
     <div class="container">
       <div class="header-content">
-        <!-- Logo -->
-        <router-link to="/" class="logo">
-          <h1>E-Commerce</h1>
-        </router-link>
+        <div class="logo">
+          <router-link to="/">E-Commerce</router-link>
+        </div>
 
-        <!-- Navigation Menu -->
-        <nav class="nav-menu">
-          <router-link to="/" class="nav-link">Home</router-link>
-          <router-link to="/seller" class="nav-link">Be A Seller</router-link>
-          <router-link to="/about" class="nav-link">About</router-link>
-          <router-link to="/contact" class="nav-link">Contact</router-link>
+        <nav class="nav-links">
+          <router-link to="/">Home</router-link>
+          <router-link to="/be-a-seller" class="seller-link">Be A Seller</router-link>
+          <router-link to="/about">About</router-link>
+          <router-link to="/contact">Contact</router-link>
         </nav>
 
-        <!-- Auth Links -->
-        <div class="auth-links">
-          <router-link to="/login" class="btn-login">Login</router-link>
-          <router-link to="/register" class="btn-register">Register</router-link>
+        <div class="header-actions">
+          <!-- Show if NOT logged in -->
+          <template v-if="!isAuthenticated">
+            <router-link to="/login" class="btn-login">Login</router-link>
+            <router-link to="/register" class="btn-register">Register</router-link>
+          </template>
+
+          <!-- Show if logged in -->
+          <template v-else>
+            <router-link to="/cart" class="cart-icon">
+              🛒
+              <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
+            </router-link>
+            <div class="user-menu">
+              <span class="user-name">{{ userName }}</span>
+              <button @click="showLogoutModal = true" class="btn-logout">Logout</button>
+            </div>
+          </template>
         </div>
       </div>
     </div>
+
+    <!-- Logout Confirmation Modal -->
+    <LogoutModal 
+      :show="showLogoutModal"
+      :isLoggingOut="isLoggingOut"
+      @close="showLogoutModal = false"
+      @confirm="handleLogout"
+    />
   </header>
 </template>
 
 <script>
+import { authService } from '@/services/authService'
+import LogoutModal from '@/components/LogoutModal.vue'
+
 export default {
-  name: 'Header'
+  name: 'Header',
+  components: {
+    LogoutModal
+  },
+  data() {
+    return {
+      isAuthenticated: false,
+      userName: '',
+      cartCount: 0,
+      showLogoutModal: false,
+      isLoggingOut: false  // ← NEW: Track logout state
+    }
+  },
+  mounted() {
+    this.checkAuth()
+  },
+  methods: {
+    checkAuth() {
+      this.isAuthenticated = authService.isAuthenticated()
+      if (this.isAuthenticated) {
+        const user = authService.getUser()
+        this.userName = user?.name || 'User'
+        // TODO: Get cart count from API or store
+        this.cartCount = 0
+      }
+    },
+
+    async handleLogout() {
+      this.isLoggingOut = true  // ← Set loading state
+
+      try {
+        await authService.logout()
+        authService.clearAuth()
+        this.isAuthenticated = false
+        this.showLogoutModal = false
+        this.isLoggingOut = false
+        this.$router.push('/login')
+      } catch (error) {
+        console.error('Logout error:', error)
+        // Force logout even if API fails
+        authService.clearAuth()
+        this.isAuthenticated = false
+        this.showLogoutModal = false
+        this.isLoggingOut = false
+        this.$router.push('/login')
+      }
+    }
+  },
+  watch: {
+    '$route'() {
+      this.checkAuth()
+    }
+  }
 }
 </script>
 
@@ -36,10 +111,7 @@ export default {
   background-color: #2c3e50;
   color: white;
   padding: 1rem 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .container {
@@ -54,54 +126,49 @@ export default {
   align-items: center;
 }
 
-.logo {
-  text-decoration: none;
+.logo a {
   color: white;
-}
-
-.logo h1 {
-  margin: 0;
+  text-decoration: none;
   font-size: 1.8rem;
   font-weight: bold;
 }
 
-.nav-menu {
+.nav-links {
   display: flex;
   gap: 2rem;
-  align-items: center;
 }
 
-.nav-link {
+.nav-links a {
   color: white;
   text-decoration: none;
-  font-size: 1rem;
   font-weight: 500;
   transition: color 0.3s;
 }
 
-.nav-link:hover,
-.nav-link.router-link-active {
+.nav-links a:hover,
+.nav-links a.router-link-active {
   color: #42b983;
 }
 
-.auth-links {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
+.seller-link {
+  color: #42b983 !important;
+  font-weight: bold !important;
 }
 
-.btn-login,
-.btn-register {
-  padding: 0.5rem 1.5rem;
-  border-radius: 4px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.3s;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .btn-login {
   color: white;
+  background-color: transparent;
   border: 1px solid white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.3s;
 }
 
 .btn-login:hover {
@@ -112,20 +179,75 @@ export default {
 .btn-register {
   background-color: #42b983;
   color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.3s;
 }
 
 .btn-register:hover {
   background-color: #359268;
 }
 
-/* Responsive */
+.cart-icon {
+  position: relative;
+  font-size: 1.5rem;
+  text-decoration: none;
+  color: white;
+  transition: transform 0.3s;
+}
+
+.cart-icon:hover {
+  transform: scale(1.1);
+}
+
+.cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 50%;
+  min-width: 18px;
+  text-align: center;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-name {
+  color: white;
+  font-weight: 500;
+}
+
+.btn-logout {
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.btn-logout:hover {
+  background-color: #cc0000;
+}
+
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
     gap: 1rem;
   }
 
-  .nav-menu {
+  .nav-links {
     gap: 1rem;
   }
 }

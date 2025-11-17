@@ -1,12 +1,12 @@
 <template>
   <Layout>
-    <div class="login-page">
+    <div class="forgot-password-page">
       <div class="container">
-        <div class="login-card">
-          <h1>Login</h1>
-          <p class="subtitle">Welcome back! Please login to your account</p>
+        <div class="forgot-password-card">
+          <h1>Forgot Password?</h1>
+          <p class="subtitle">Enter your email address and we'll send you a link to reset your password</p>
 
-          <form @submit.prevent="handleLogin" class="login-form">
+          <form @submit.prevent="handleForgotPassword" class="forgot-password-form">
             <div class="form-group" :class="{ 'has-error': errors.email }">
               <label for="email">Email Address</label>
               <input
@@ -14,31 +14,16 @@
                 id="email"
                 v-model="email"
                 placeholder="Enter your email"
-                @input="clearError('email')"
+                @input="clearError"
                 :disabled="isLoading"
               />
               <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
             </div>
 
-            <div class="form-group" :class="{ 'has-error': errors.password }">
-              <label for="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                v-model="password"
-                placeholder="Enter your password"
-                @input="clearError('password')"
-                :disabled="isLoading"
-              />
-              <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
-            </div>
-
-            <div class="form-options">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="rememberMe" :disabled="isLoading" />
-                Remember me
-              </label>
-              <router-link to="/forgot-password" class="forgot-password">Forgot Password?</router-link>
+            <!-- Success Message -->
+            <div v-if="successMessage" class="success-message">
+              <i class="fas fa-check-circle"></i>
+              {{ successMessage }}
             </div>
 
             <!-- General Error Message -->
@@ -47,17 +32,16 @@
               {{ generalError }}
             </div>
 
-            <button type="submit" class="btn-login" :disabled="isLoading">
-              <span v-if="!isLoading">Login</span>
+            <button type="submit" class="btn-submit" :disabled="isLoading">
+              <span v-if="!isLoading">Send Reset Link</span>
               <span v-else>
-                <i class="fas fa-spinner fa-spin"></i> Logging in...
+                <i class="fas fa-spinner fa-spin"></i> Sending...
               </span>
             </button>
           </form>
 
-          <div class="register-link">
-            Don't have an account?
-            <router-link to="/register">Register here</router-link>
+          <div class="back-to-login">
+            <router-link to="/login">← Back to Login</router-link>
           </div>
         </div>
       </div>
@@ -67,59 +51,48 @@
 
 <script>
 import Layout from '@/components/layout/Layout.vue'
-import { authService } from '@/services/authService'
+import axios from 'axios'
 
 export default {
-  name: 'LoginView',
+  name: 'ForgotPasswordView',
   components: {
     Layout
   },
   data() {
     return {
       email: '',
-      password: '',
-      rememberMe: false,
       isLoading: false,
+      successMessage: '',
       generalError: '',
       errors: {
-        email: '',
-        password: ''
+        email: ''
       }
     }
   },
   methods: {
-    clearError(field) {
-      this.errors[field] = ''
+    clearError() {
+      this.errors.email = ''
       this.generalError = ''
     },
 
     validateForm() {
-      let isValid = true
-      this.errors = {
-        email: '',
-        password: ''
-      }
+      this.errors.email = ''
 
       if (!this.email) {
         this.errors.email = 'Email is required'
-        isValid = false
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
+        return false
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
         this.errors.email = 'Please enter a valid email address'
-        isValid = false
+        return false
       }
 
-      if (!this.password) {
-        this.errors.password = 'Password is required'
-        isValid = false
-      } else if (this.password.length < 6) {
-        this.errors.password = 'Password must be at least 6 characters'
-        isValid = false
-      }
-
-      return isValid
+      return true
     },
 
-    async handleLogin() {
+    async handleForgotPassword() {
+      this.successMessage = ''
       this.generalError = ''
 
       if (!this.validateForm()) {
@@ -129,14 +102,15 @@ export default {
       this.isLoading = true
 
       try {
-        const response = await authService.login(this.email, this.password)
+        // CHANGED: Use buyer-specific endpoint
+        const response = await axios.post(
+          process.env.VUE_APP_API_BASE_URL + '/buyer/forgot-password',
+          { email: this.email }
+        )
 
-        // Save token and user data
-        localStorage.setItem('buyer_token', response.token)
-        localStorage.setItem('buyer_user', JSON.stringify(response.user))
-
-        // Redirect to home
-        this.$router.push('/')
+        this.successMessage = response.data.message
+        this.email = ''
+        this.isLoading = false
 
       } catch (error) {
         this.isLoading = false
@@ -147,15 +121,11 @@ export default {
           if (backendErrors.email) {
             this.errors.email = backendErrors.email[0]
           }
-          if (backendErrors.password) {
-            this.errors.password = backendErrors.password[0]
-          }
-        } else if (error.response?.status === 404) {
-          this.generalError = 'No account found with this email address.'
-        } else if (error.response?.status === 401) {
-          this.generalError = 'Invalid password. Please try again.'
+        } else if (error.response?.status === 403) {
+          // User is not a buyer
+          this.generalError = error.response.data.message
         } else {
-          this.generalError = 'Login failed. Please try again.'
+          this.generalError = error.response?.data?.message || 'Failed to send reset link. Please try again.'
         }
       }
     }
@@ -164,7 +134,7 @@ export default {
 </script>
 
 <style scoped>
-.login-page {
+.forgot-password-page {
   min-height: 70vh;
   display: flex;
   align-items: center;
@@ -177,7 +147,7 @@ export default {
   padding: 2rem 1rem;
 }
 
-.login-card {
+.forgot-password-card {
   max-width: 450px;
   margin: 0 auto;
   background: white;
@@ -186,7 +156,7 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.login-card h1 {
+.forgot-password-card h1 {
   text-align: center;
   color: #2c3e50;
   margin: 0 0 0.5rem 0;
@@ -196,9 +166,11 @@ export default {
   text-align: center;
   color: #666;
   margin: 0 0 2rem 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.login-form {
+.forgot-password-form {
   margin-top: 2rem;
 }
 
@@ -233,7 +205,6 @@ export default {
   opacity: 0.6;
 }
 
-/* Error state */
 .form-group.has-error input {
   border-color: #dc3545;
 }
@@ -249,6 +220,23 @@ export default {
   font-size: 0.85rem;
   margin-top: 0.5rem;
   font-weight: 500;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.success-message i {
+  font-size: 16px;
 }
 
 .general-error {
@@ -268,36 +256,7 @@ export default {
   font-size: 16px;
 }
 
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #666;
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"]:disabled {
-  cursor: not-allowed;
-}
-
-.forgot-password {
-  color: #42b983;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.forgot-password:hover {
-  text-decoration: underline;
-}
-
-.btn-login {
+.btn-submit {
   width: 100%;
   padding: 1rem;
   background-color: #42b983;
@@ -310,33 +269,32 @@ export default {
   transition: background-color 0.3s;
 }
 
-.btn-login:hover:not(:disabled) {
+.btn-submit:hover:not(:disabled) {
   background-color: #359268;
 }
 
-.btn-login:disabled {
+.btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.register-link {
+.back-to-login {
   text-align: center;
   margin-top: 2rem;
-  color: #666;
 }
 
-.register-link a {
+.back-to-login a {
   color: #42b983;
-  font-weight: bold;
+  font-weight: 500;
   text-decoration: none;
 }
 
-.register-link a:hover {
+.back-to-login a:hover {
   text-decoration: underline;
 }
 
 @media (max-width: 768px) {
-  .login-card {
+  .forgot-password-card {
     padding: 2rem 1.5rem;
   }
 }

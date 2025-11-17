@@ -1,44 +1,42 @@
 <template>
   <Layout>
-    <div class="login-page">
+    <div class="reset-password-page">
       <div class="container">
-        <div class="login-card">
-          <h1>Login</h1>
-          <p class="subtitle">Welcome back! Please login to your account</p>
+        <div class="reset-password-card">
+          <h1>Reset Password</h1>
+          <p class="subtitle">Enter your new password</p>
 
-          <form @submit.prevent="handleLogin" class="login-form">
-            <div class="form-group" :class="{ 'has-error': errors.email }">
-              <label for="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                v-model="email"
-                placeholder="Enter your email"
-                @input="clearError('email')"
-                :disabled="isLoading"
-              />
-              <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
-            </div>
-
+          <form @submit.prevent="handleResetPassword" class="reset-password-form">
             <div class="form-group" :class="{ 'has-error': errors.password }">
-              <label for="password">Password</label>
+              <label for="password">New Password</label>
               <input
                 type="password"
                 id="password"
                 v-model="password"
-                placeholder="Enter your password"
+                placeholder="Enter new password"
                 @input="clearError('password')"
                 :disabled="isLoading"
               />
               <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
             </div>
 
-            <div class="form-options">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="rememberMe" :disabled="isLoading" />
-                Remember me
-              </label>
-              <router-link to="/forgot-password" class="forgot-password">Forgot Password?</router-link>
+            <div class="form-group" :class="{ 'has-error': errors.confirmPassword }">
+              <label for="confirmPassword">Confirm Password</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                v-model="confirmPassword"
+                placeholder="Confirm new password"
+                @input="clearError('confirmPassword')"
+                :disabled="isLoading"
+              />
+              <span v-if="errors.confirmPassword" class="error-message">{{ errors.confirmPassword }}</span>
+            </div>
+
+            <!-- Success Message -->
+            <div v-if="successMessage" class="success-message">
+              <i class="fas fa-check-circle"></i>
+              {{ successMessage }}
             </div>
 
             <!-- General Error Message -->
@@ -47,17 +45,16 @@
               {{ generalError }}
             </div>
 
-            <button type="submit" class="btn-login" :disabled="isLoading">
-              <span v-if="!isLoading">Login</span>
+            <button type="submit" class="btn-submit" :disabled="isLoading">
+              <span v-if="!isLoading">Reset Password</span>
               <span v-else>
-                <i class="fas fa-spinner fa-spin"></i> Logging in...
+                <i class="fas fa-spinner fa-spin"></i> Resetting...
               </span>
             </button>
           </form>
 
-          <div class="register-link">
-            Don't have an account?
-            <router-link to="/register">Register here</router-link>
+          <div class="back-to-login">
+            <router-link to="/login">← Back to Login</router-link>
           </div>
         </div>
       </div>
@@ -67,24 +64,34 @@
 
 <script>
 import Layout from '@/components/layout/Layout.vue'
-import { authService } from '@/services/authService'
+import axios from 'axios'
 
 export default {
-  name: 'LoginView',
+  name: 'ResetPasswordView',
   components: {
     Layout
   },
   data() {
     return {
+      token: '',
       email: '',
       password: '',
-      rememberMe: false,
+      confirmPassword: '',
       isLoading: false,
+      successMessage: '',
       generalError: '',
       errors: {
-        email: '',
-        password: ''
+        password: '',
+        confirmPassword: ''
       }
+    }
+  },
+  mounted() {
+    this.token = this.$route.query.token || ''
+    this.email = this.$route.query.email || ''
+
+    if (!this.token || !this.email) {
+      this.generalError = 'Invalid reset link. Please request a new password reset.'
     }
   },
   methods: {
@@ -96,16 +103,8 @@ export default {
     validateForm() {
       let isValid = true
       this.errors = {
-        email: '',
-        password: ''
-      }
-
-      if (!this.email) {
-        this.errors.email = 'Email is required'
-        isValid = false
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
-        this.errors.email = 'Please enter a valid email address'
-        isValid = false
+        password: '',
+        confirmPassword: ''
       }
 
       if (!this.password) {
@@ -116,10 +115,19 @@ export default {
         isValid = false
       }
 
+      if (!this.confirmPassword) {
+        this.errors.confirmPassword = 'Please confirm your password'
+        isValid = false
+      } else if (this.password !== this.confirmPassword) {
+        this.errors.confirmPassword = 'Passwords do not match'
+        isValid = false
+      }
+
       return isValid
     },
 
-    async handleLogin() {
+    async handleResetPassword() {
+      this.successMessage = ''
       this.generalError = ''
 
       if (!this.validateForm()) {
@@ -129,14 +137,27 @@ export default {
       this.isLoading = true
 
       try {
-        const response = await authService.login(this.email, this.password)
+        // IMPORTANT: Laravel expects 'password_confirmation', not 'confirmPassword'
+        const response = await axios.post(
+          process.env.VUE_APP_API_BASE_URL + '/reset-password',
+          {
+            token: this.token,
+            email: this.email,
+            password: this.password,
+            password_confirmation: this.confirmPassword  // ← Changed from confirmPassword
+          }
+        )
 
-        // Save token and user data
-        localStorage.setItem('buyer_token', response.token)
-        localStorage.setItem('buyer_user', JSON.stringify(response.user))
+        this.successMessage = response.data.message
+        
+        // Clear form
+        this.password = ''
+        this.confirmPassword = ''
 
-        // Redirect to home
-        this.$router.push('/')
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          this.$router.push('/login')
+        }, 2000)
 
       } catch (error) {
         this.isLoading = false
@@ -144,18 +165,14 @@ export default {
         if (error.response?.status === 422) {
           const backendErrors = error.response.data.errors
           
-          if (backendErrors.email) {
-            this.errors.email = backendErrors.email[0]
-          }
           if (backendErrors.password) {
             this.errors.password = backendErrors.password[0]
           }
-        } else if (error.response?.status === 404) {
-          this.generalError = 'No account found with this email address.'
-        } else if (error.response?.status === 401) {
-          this.generalError = 'Invalid password. Please try again.'
+          if (backendErrors.password_confirmation) {
+            this.errors.confirmPassword = backendErrors.password_confirmation[0]
+          }
         } else {
-          this.generalError = 'Login failed. Please try again.'
+          this.generalError = error.response?.data?.message || 'Failed to reset password. Please try again.'
         }
       }
     }
@@ -164,7 +181,7 @@ export default {
 </script>
 
 <style scoped>
-.login-page {
+.reset-password-page {
   min-height: 70vh;
   display: flex;
   align-items: center;
@@ -177,7 +194,7 @@ export default {
   padding: 2rem 1rem;
 }
 
-.login-card {
+.reset-password-card {
   max-width: 450px;
   margin: 0 auto;
   background: white;
@@ -186,7 +203,7 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.login-card h1 {
+.reset-password-card h1 {
   text-align: center;
   color: #2c3e50;
   margin: 0 0 0.5rem 0;
@@ -198,7 +215,7 @@ export default {
   margin: 0 0 2rem 0;
 }
 
-.login-form {
+.reset-password-form {
   margin-top: 2rem;
 }
 
@@ -233,7 +250,6 @@ export default {
   opacity: 0.6;
 }
 
-/* Error state */
 .form-group.has-error input {
   border-color: #dc3545;
 }
@@ -249,6 +265,23 @@ export default {
   font-size: 0.85rem;
   margin-top: 0.5rem;
   font-weight: 500;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.success-message i {
+  font-size: 16px;
 }
 
 .general-error {
@@ -268,36 +301,7 @@ export default {
   font-size: 16px;
 }
 
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #666;
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"]:disabled {
-  cursor: not-allowed;
-}
-
-.forgot-password {
-  color: #42b983;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.forgot-password:hover {
-  text-decoration: underline;
-}
-
-.btn-login {
+.btn-submit {
   width: 100%;
   padding: 1rem;
   background-color: #42b983;
@@ -310,33 +314,32 @@ export default {
   transition: background-color 0.3s;
 }
 
-.btn-login:hover:not(:disabled) {
+.btn-submit:hover:not(:disabled) {
   background-color: #359268;
 }
 
-.btn-login:disabled {
+.btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.register-link {
+.back-to-login {
   text-align: center;
   margin-top: 2rem;
-  color: #666;
 }
 
-.register-link a {
+.back-to-login a {
   color: #42b983;
-  font-weight: bold;
+  font-weight: 500;
   text-decoration: none;
 }
 
-.register-link a:hover {
+.back-to-login a:hover {
   text-decoration: underline;
 }
 
 @media (max-width: 768px) {
-  .login-card {
+  .reset-password-card {
     padding: 2rem 1.5rem;
   }
 }
