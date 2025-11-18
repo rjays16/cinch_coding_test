@@ -56,6 +56,11 @@ const routes = [
         component: () => import('../views/products/AddProduct.vue')
       },
       {
+        path: 'products/:id/edit',
+        name: 'EditProduct',
+        component: () => import('../views/products/EditProduct.vue')
+      },
+      {
         path: 'categories',
         name: 'Categories',
         component: () => import('../views/Categories.vue')
@@ -76,7 +81,7 @@ const routes = [
         component: () => import('../views/Settings.vue')
       }
     ]
-  }
+  },
 ]
 
 const router = createRouter({
