@@ -14,6 +14,18 @@
       </div>
     </div>
 
+    <!-- Error Alert -->
+    <div v-if="errorMessage" class="error-alert">
+      <i class="fas fa-exclamation-circle"></i>
+      <div class="error-content">
+        <strong>Error</strong>
+        <p>{{ errorMessage }}</p>
+      </div>
+      <button @click="errorMessage = ''" class="close-error">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-container">
       <div class="loading-spinner">
@@ -52,9 +64,11 @@
                 type="text"
                 id="productName"
                 v-model="product.name"
+                :class="{ 'input-error': errors.name }"
                 placeholder="Enter product name"
                 required
               />
+              <span v-if="errors.name" class="error-text">{{ errors.name[0] }}</span>
             </div>
           </div>
 
@@ -64,22 +78,31 @@
               <textarea
                 id="description"
                 v-model="product.description"
+                :class="{ 'input-error': errors.description }"
                 placeholder="Describe your product..."
                 rows="5"
                 required
               ></textarea>
+              <span v-if="errors.description" class="error-text">{{ errors.description[0] }}</span>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="category">Category <span class="required">*</span></label>
-              <select id="category" v-model="product.category" required @change="handleCategoryChange">
+              <select 
+                id="category" 
+                v-model="product.category" 
+                :class="{ 'input-error': errors.category }"
+                required 
+                @change="handleCategoryChange"
+              >
                 <option value="">Select a category</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.name">
                   {{ cat.name }}
                 </option>
               </select>
+              <span v-if="errors.category" class="error-text">{{ errors.category[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -88,8 +111,26 @@
                 type="text"
                 id="brand"
                 v-model="product.brand"
+                :class="{ 'input-error': errors.brand }"
                 placeholder="Enter brand name"
               />
+              <span v-if="errors.brand" class="error-text">{{ errors.brand[0] }}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sku">SKU (Stock Keeping Unit) <span class="required">*</span></label>
+              <input
+                type="text"
+                id="sku"
+                v-model="product.sku"
+                :class="{ 'input-error': errors.sku }"
+                placeholder="e.g., PROD-001"
+                required
+              />
+              <small class="helper-text">Unique identifier for this product</small>
+              <span v-if="errors.sku" class="error-text">{{ errors.sku[0] }}</span>
             </div>
           </div>
         </div>
@@ -110,12 +151,14 @@
                   type="number"
                   id="price"
                   v-model.number="product.price"
+                  :class="{ 'input-error': errors.price }"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
                   required
                 />
               </div>
+              <span v-if="errors.price" class="error-text">{{ errors.price[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -126,12 +169,14 @@
                   type="number"
                   id="comparePrice"
                   v-model.number="product.comparePrice"
+                  :class="{ 'input-error': errors.compare_price }"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
                 />
               </div>
               <small class="helper-text">Original price to show discount</small>
+              <span v-if="errors.compare_price" class="error-text">{{ errors.compare_price[0] }}</span>
             </div>
           </div>
 
@@ -170,6 +215,7 @@
                 </label>
               </div>
               <small class="helper-text">Select all sizes available for this product</small>
+              <span v-if="errors.sizes" class="error-text">{{ errors.sizes[0] }}</span>
             </div>
           </div>
 
@@ -181,20 +227,12 @@
                 type="number"
                 id="stock"
                 v-model.number="product.stock"
+                :class="{ 'input-error': errors.stock }"
                 placeholder="0"
                 min="0"
                 required
               />
-            </div>
-
-            <div class="form-group">
-              <label for="sku">SKU (Stock Keeping Unit)</label>
-              <input
-                type="text"
-                id="sku"
-                v-model="product.sku"
-                placeholder="e.g., PROD-001"
-              />
+              <span v-if="errors.stock" class="error-text">{{ errors.stock[0] }}</span>
             </div>
           </div>
 
@@ -225,19 +263,22 @@
               </div>
 
               <label>Upload New Image (Optional)</label>
-              <div class="image-upload-area">
+              <div class="image-upload-area" @click="$refs.fileInput.click()">
                 <div class="upload-placeholder">
                   <i class="fas fa-cloud-upload-alt"></i>
                   <p>Click to upload or drag and drop</p>
-                  <small>PNG, JPG, GIF up to 10MB</small>
+                  <small>PNG, JPG, GIF, WEBP up to 5MB</small>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  @change="handleImageUpload"
-                  class="file-input"
-                />
               </div>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                @change="handleImageUpload"
+                class="file-input"
+                hidden
+              />
+              <span v-if="errors.image" class="error-text">{{ errors.image[0] }}</span>
 
               <!-- New Image Preview -->
               <div v-if="newImagePreview" class="new-image-preview">
@@ -267,8 +308,10 @@
                 type="text"
                 id="color"
                 v-model="product.color"
+                :class="{ 'input-error': errors.color }"
                 placeholder="e.g., Red, Blue, Black"
               />
+              <span v-if="errors.color" class="error-text">{{ errors.color[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -277,10 +320,12 @@
                 type="number"
                 id="weight"
                 v-model.number="product.weight"
+                :class="{ 'input-error': errors.weight }"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
               />
+              <span v-if="errors.weight" class="error-text">{{ errors.weight[0] }}</span>
             </div>
           </div>
 
@@ -291,8 +336,10 @@
                 type="text"
                 id="material"
                 v-model="product.material"
+                :class="{ 'input-error': errors.material }"
                 placeholder="e.g., Cotton, Leather, Plastic"
               />
+              <span v-if="errors.material" class="error-text">{{ errors.material[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -349,6 +396,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import SuccessModal from '@/components/modals/SuccessModal.vue'
+import { productService } from '@/services/productService'
 
 const router = useRouter()
 const route = useRoute()
@@ -358,6 +406,8 @@ const isSaving = ref(false)
 const showSuccessModal = ref(false)
 const newImagePreview = ref(null)
 const newImageFile = ref(null)
+const errorMessage = ref('')
+const errors = ref({})
 
 // Static categories data
 const categories = ref([
@@ -372,148 +422,6 @@ const categories = ref([
   { id: 9, name: 'Accessories', requiresSizes: false, sizes: [] },
   { id: 10, name: 'Food & Beverages', requiresSizes: false, sizes: [] }
 ])
-
-// Get products from localStorage or use static data
-const getStoredProducts = () => {
-  const stored = localStorage.getItem('products')
-  if (stored) {
-    return JSON.parse(stored)
-  }
-  
-  // Default static products if none in localStorage
-  return [
-    {
-      id: 1,
-      name: 'Premium Cotton T-Shirt',
-      description: 'Soft and comfortable premium cotton t-shirt. Perfect for everyday wear with a modern fit and breathable fabric.',
-      sku: 'PROD-001',
-      category: 'Fashion',
-      brand: 'StyleCo',
-      price: 599,
-      comparePrice: 799,
-      stock: 50,
-      isActive: true,
-      sizes: ['S', 'M', 'L', 'XL'],
-      color: 'Navy Blue',
-      weight: 0.2,
-      material: 'Cotton',
-      image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop'
-    },
-    {
-      id: 2,
-      name: 'Wireless Bluetooth Headphones',
-      description: 'High-quality wireless headphones with noise cancellation, 30-hour battery life, and premium sound quality.',
-      sku: 'PROD-002',
-      category: 'Electronics',
-      brand: 'AudioPro',
-      price: 2499,
-      comparePrice: 3499,
-      stock: 25,
-      isActive: true,
-      color: 'Black',
-      weight: 0.3,
-      material: 'Plastic, Metal',
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop'
-    },
-    {
-      id: 3,
-      name: 'Running Shoes',
-      description: 'Professional running shoes with advanced cushioning and breathable mesh upper. Ideal for marathon training.',
-      sku: 'PROD-003',
-      category: 'Footwear',
-      brand: 'RunFast',
-      price: 3999,
-      comparePrice: null,
-      stock: 8,
-      isActive: true,
-      sizes: ['39', '40', '41', '42', '43'],
-      color: 'White/Red',
-      weight: 0.5,
-      material: 'Mesh, Rubber',
-      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop'
-    },
-    {
-      id: 4,
-      name: 'Yoga Mat',
-      description: 'Eco-friendly yoga mat with excellent grip and cushioning. Perfect for yoga, pilates, and stretching exercises.',
-      sku: 'PROD-004',
-      category: 'Sports & Outdoors',
-      brand: 'ZenFit',
-      price: 899,
-      comparePrice: 1299,
-      stock: 0,
-      isActive: false,
-      color: 'Purple',
-      weight: 1.2,
-      material: 'TPE',
-      image: 'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=400&h=400&fit=crop'
-    },
-    {
-      id: 5,
-      name: 'Smart Watch',
-      description: 'Feature-packed smart watch with heart rate monitor, GPS, and 5-day battery life. Water resistant up to 50m.',
-      sku: 'PROD-005',
-      category: 'Electronics',
-      brand: 'TechTime',
-      price: 4999,
-      comparePrice: 6999,
-      stock: 15,
-      isActive: true,
-      color: 'Silver',
-      weight: 0.15,
-      material: 'Aluminum, Silicone',
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop'
-    },
-    {
-      id: 6,
-      name: 'Leather Wallet',
-      description: 'Handcrafted genuine leather wallet with RFID protection. Multiple card slots and bill compartments.',
-      sku: 'PROD-006',
-      category: 'Accessories',
-      brand: 'LeatherCraft',
-      price: 799,
-      comparePrice: null,
-      stock: 30,
-      isActive: true,
-      color: 'Brown',
-      weight: 0.1,
-      material: 'Genuine Leather',
-      image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&h=400&fit=crop'
-    },
-    {
-      id: 7,
-      name: 'Organic Face Cream',
-      description: 'Natural organic face cream with vitamin E and hyaluronic acid. Suitable for all skin types.',
-      sku: 'PROD-007',
-      category: 'Beauty & Personal Care',
-      brand: 'NaturalGlow',
-      price: 1299,
-      comparePrice: 1599,
-      stock: 5,
-      isActive: true,
-      color: 'White',
-      weight: 0.05,
-      material: 'Organic Ingredients',
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=400&fit=crop'
-    },
-    {
-      id: 8,
-      name: 'Gaming Mouse',
-      description: 'Professional gaming mouse with RGB lighting, 16000 DPI, and programmable buttons. Ultra-precise sensor.',
-      sku: 'PROD-008',
-      category: 'Electronics',
-      brand: 'GamePro',
-      price: 1899,
-      comparePrice: 2499,
-      stock: 20,
-      isActive: true,
-      color: 'Black/RGB',
-      weight: 0.12,
-      material: 'Plastic, Metal',
-      image: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=400&h=400&fit=crop'
-    }
-  ]
-}
 
 const product = ref(null)
 
@@ -563,24 +471,45 @@ const stockStatusText = computed(() => {
 })
 
 // Methods
-const loadProduct = () => {
+const loadProduct = async () => {
   const productId = parseInt(route.params.id)
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await productService.getProduct(productId)
   
-  // Simulate API call with slight delay for better UX
-  setTimeout(() => {
-    const products = getStoredProducts()
-    const foundProduct = products.find(p => p.id === productId)
-    
-    if (foundProduct) {
-      // Deep clone to avoid reference issues
-      product.value = JSON.parse(JSON.stringify(foundProduct))
-      console.log('✅ Product loaded:', product.value)
-    } else {
-      console.log('❌ Product not found with ID:', productId)
+    if (response.success) {
+      // Map API response to component format
+      product.value = {
+        id: response.data.id,
+        name: response.data.name,
+        description: response.data.description,
+        sku: response.data.sku,
+        category: response.data.category,
+        brand: response.data.brand,
+        price: parseFloat(response.data.price),
+        comparePrice: response.data.compare_price ? parseFloat(response.data.compare_price) : null,
+        stock: parseInt(response.data.stock),
+        isActive: response.data.is_active,
+        sizes: response.data.sizes || [],
+        color: response.data.color,
+        weight: response.data.weight ? parseFloat(response.data.weight) : null,
+        material: response.data.material,
+        image: response.data.image_url || response.data.image
+      }
     }
-    
+
     isLoading.value = false
-  }, 300) // Reduced delay for better UX
+  } catch (error) {
+    errorMessage.value = error.message || 'Failed to load product'
+    isLoading.value = false
+    
+    // If product not found, show not found state
+    if (error.status === 404) {
+      product.value = null
+    }
+  }
 }
 
 const handleCategoryChange = () => {
@@ -594,14 +523,28 @@ const handleImageUpload = (event) => {
   const file = event.target.files[0]
   
   if (file) {
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      errorMessage.value = 'Image size must be less than 5MB'
+      return
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      errorMessage.value = 'Image must be JPEG, PNG, JPG, GIF, or WEBP'
+      return
+    }
+
     newImageFile.value = file
-    const reader = new FileReader()
     
+    const reader = new FileReader()
     reader.onload = (e) => {
       newImagePreview.value = e.target.result
     }
-    
     reader.readAsDataURL(file)
+    
+    errorMessage.value = ''
   }
 }
 
@@ -610,32 +553,69 @@ const removeNewImage = () => {
   newImageFile.value = null
 }
 
-const handleSubmit = () => {
-  console.log('💾 Saving Product Data:', product.value)
-  console.log('🖼️ New Image:', newImageFile.value)
+const handleSubmit = async () => {
   
+  // Clear previous errors
+  errors.value = {}
+  errorMessage.value = ''
   isSaving.value = true
   
-  // Simulate API call
-  setTimeout(() => {
-    // Update product in localStorage
-    const products = getStoredProducts()
-    const index = products.findIndex(p => p.id === product.value.id)
+  try {
+    // Prepare data for API
+    const productData = {
+      name: product.value.name,
+      description: product.value.description,
+      sku: product.value.sku,
+      category: product.value.category,
+      brand: product.value.brand,
+      price: product.value.price,
+      compare_price: product.value.comparePrice,
+      stock: product.value.stock,
+      is_active: product.value.isActive ? 1 : 0,
+      sizes: product.value.sizes || [],
+      color: product.value.color,
+      weight: product.value.weight,
+      material: product.value.material
+    }
+
+    // Add new image if uploaded
+    if (newImageFile.value) {
+      productData.image = newImageFile.value
+    }
+
+    // Call API
+    const response = await productService.updateProduct(product.value.id, productData)
     
-    if (index !== -1) {
-      // If new image was uploaded, use the preview
-      if (newImagePreview.value) {
-        product.value.image = newImagePreview.value
+    // Update local product data with response
+    if (response.success && response.data) {
+      product.value = {
+        ...product.value,
+        image: response.data.image_url || response.data.image
       }
-      
-      products[index] = { ...product.value }
-      localStorage.setItem('products', JSON.stringify(products))
-      console.log('✅ Product updated in localStorage')
+    }
+    
+    // Clear new image preview
+    newImagePreview.value = null
+    newImageFile.value = null
+    
+    // Show success modal
+    isSaving.value = false
+    showSuccessModal.value = true
+    
+  } catch (error) {
+    
+    if (error.errors) {
+      // Laravel validation errors
+      errors.value = error.errors
+      errorMessage.value = error.message || 'Please fix the validation errors'
+    } else if (error.message) {
+      errorMessage.value = error.message
+    } else {
+      errorMessage.value = 'Failed to update product. Please try again.'
     }
     
     isSaving.value = false
-    showSuccessModal.value = true
-  }, 1500)
+  }
 }
 
 const handleCancel = () => {
@@ -650,13 +630,20 @@ const backToProducts = () => {
 }
 
 onMounted(() => {
-  console.log('📝 EditProduct mounted, loading product ID:', route.params.id)
+  
+  // Check if user is authenticated
+  const token = localStorage.getItem('seller_token')
+  if (!token) {
+    router.push('/login')
+    return
+  }
+  
+  // Load product from API
   loadProduct()
 })
 </script>
 
 <style scoped>
-/* Same styles as AddProduct.vue */
 .edit-product-page {
   padding: 2rem;
   max-width: 1200px;
@@ -711,6 +698,88 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
+/* Error Alert */
+.error-alert {
+  background: #fee;
+  border: 2px solid #fcc;
+  color: #c33;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+.error-alert i.fa-exclamation-circle {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.error-content p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.close-error {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #c33;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.close-error:hover {
+  background: #fcc;
+  color: #a00;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Input Error State */
+.input-error {
+  border-color: #e74c3c !important;
+  background: #fff5f5 !important;
+}
+
+.error-text {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  display: block;
+  font-weight: 500;
+}
+
 .loading-container,
 .not-found-container {
   background: white;
@@ -731,6 +800,12 @@ onMounted(() => {
   justify-content: center;
   font-size: 2.5rem;
   margin: 0 auto 1.5rem;
+}
+
+.loading-container p {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
 }
 
 .not-found-icon {
@@ -1019,13 +1094,7 @@ onMounted(() => {
 }
 
 .file-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  display: none;
 }
 
 .new-image-preview {

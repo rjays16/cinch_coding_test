@@ -15,10 +15,10 @@
           <!-- Product Image -->
           <div class="product-image-section">
             <div class="main-image">
-              <img :src="product.image" :alt="product.name" />
+              <img :src="productImage" :alt="product.name" />
             </div>
-            <div class="image-badge" :class="product.isActive ? 'badge-active' : 'badge-inactive'">
-              {{ product.isActive ? 'Active' : 'Inactive' }}
+            <div class="image-badge" :class="productIsActive ? 'badge-active' : 'badge-inactive'">
+              {{ productIsActive ? 'Active' : 'Inactive' }}
             </div>
           </div>
 
@@ -50,11 +50,11 @@
                   <span class="price-label">Current Price</span>
                   <span class="current-price">₱{{ formatPrice(product.price) }}</span>
                 </div>
-                <div class="price-item" v-if="product.comparePrice">
+                <div class="price-item" v-if="productComparePrice">
                   <span class="price-label">Compare Price</span>
-                  <span class="compare-price">₱{{ formatPrice(product.comparePrice) }}</span>
+                  <span class="compare-price">₱{{ formatPrice(productComparePrice) }}</span>
                 </div>
-                <div class="discount-info" v-if="product.comparePrice && product.comparePrice > product.price">
+                <div class="discount-info" v-if="calculateDiscount > 0">
                   <i class="fas fa-percent"></i>
                   Save {{ calculateDiscount }}% off!
                 </div>
@@ -111,14 +111,14 @@
             </div>
 
             <!-- Timestamps -->
-            <div class="info-group timestamps" v-if="product.createdAt || product.updatedAt">
-              <div class="timestamp-item" v-if="product.createdAt">
+            <div class="info-group timestamps" v-if="productCreatedAt || productUpdatedAt">
+              <div class="timestamp-item" v-if="productCreatedAt">
                 <i class="fas fa-calendar-plus"></i>
-                <span>Created: {{ formatDate(product.createdAt) }}</span>
+                <span>Created: {{ formatDate(productCreatedAt) }}</span>
               </div>
-              <div class="timestamp-item" v-if="product.updatedAt">
+              <div class="timestamp-item" v-if="productUpdatedAt">
                 <i class="fas fa-calendar-check"></i>
-                <span>Updated: {{ formatDate(product.updatedAt) }}</span>
+                <span>Updated: {{ formatDate(productUpdatedAt) }}</span>
               </div>
             </div>
           </div>
@@ -156,9 +156,48 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'edit'])
 
+// Computed properties to handle both API format and component format
+const productIsActive = computed(() => {
+  if (!props.product) return false
+  // Support both is_active (API) and isActive (component)
+  return props.product.is_active !== undefined 
+    ? props.product.is_active 
+    : props.product.isActive
+})
+
+const productComparePrice = computed(() => {
+  if (!props.product) return null
+  // Support both compare_price (API) and comparePrice (component)
+  return props.product.compare_price !== undefined 
+    ? props.product.compare_price 
+    : props.product.comparePrice
+})
+
+const productCreatedAt = computed(() => {
+  if (!props.product) return null
+  // Support both created_at (API) and createdAt (component)
+  return props.product.created_at !== undefined 
+    ? props.product.created_at 
+    : props.product.createdAt
+})
+
+const productUpdatedAt = computed(() => {
+  if (!props.product) return null
+  // Support both updated_at (API) and updatedAt (component)
+  return props.product.updated_at !== undefined 
+    ? props.product.updated_at 
+    : props.product.updatedAt
+})
+
+const productImage = computed(() => {
+  if (!props.product) return 'https://via.placeholder.com/300'
+  // Support image_url (API), image (both), or placeholder
+  return props.product.image_url || props.product.image || 'https://via.placeholder.com/300'
+})
+
 const calculateDiscount = computed(() => {
-  if (props.product?.comparePrice && props.product?.price) {
-    const discount = ((props.product.comparePrice - props.product.price) / props.product.comparePrice) * 100
+  if (productComparePrice.value && props.product?.price) {
+    const discount = ((productComparePrice.value - props.product.price) / productComparePrice.value) * 100
     return Math.round(discount)
   }
   return 0
@@ -184,10 +223,13 @@ const getStockClass = (stock) => {
 }
 
 const formatDate = (date) => {
+  if (!date) return 'N/A'
   return new Date(date).toLocaleDateString('en-PH', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   })
 }
 
