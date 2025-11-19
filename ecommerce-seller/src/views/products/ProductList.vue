@@ -16,177 +16,203 @@
       </div>
     </div>
 
-    <!-- Filters and Search -->
-    <div class="filters-section">
-      <div class="search-box">
-        <i class="fas fa-search"></i>
-        <input
-          type="text"
-          v-model="searchQuery"
-          placeholder="Search products..."
-          @input="handleSearch"
-        />
+    <!-- Error Alert -->
+    <div v-if="errorMessage" class="error-alert">
+      <i class="fas fa-exclamation-circle"></i>
+      <div class="error-content">
+        <strong>Error</strong>
+        <p>{{ errorMessage }}</p>
       </div>
-
-      <div class="filter-controls">
-        <select v-model="filterCategory" @change="handleFilter" class="filter-select">
-          <option value="">All Categories</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-            {{ cat.name }}
-          </option>
-        </select>
-
-        <select v-model="filterStatus" @change="handleFilter" class="filter-select">
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-
-        <select v-model="sortBy" @change="handleSort" class="filter-select">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="name-asc">Name (A-Z)</option>
-          <option value="name-desc">Name (Z-A)</option>
-          <option value="price-asc">Price (Low to High)</option>
-          <option value="price-desc">Price (High to Low)</option>
-        </select>
-      </div>
+      <button @click="errorMessage = ''" class="close-error">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
 
-    <!-- Products Stats -->
-    <div class="stats-section">
-      <div class="stat-card">
-        <div class="stat-icon total">
-          <i class="fas fa-box"></i>
-        </div>
-        <div class="stat-content">
-          <h3>{{ totalProducts }}</h3>
-          <p>Total Products</p>
-        </div>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
       </div>
-
-      <div class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <h3>{{ activeProducts }}</h3>
-          <p>Active</p>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-times-circle"></i>
-        </div>
-        <div class="stat-content">
-          <h3>{{ inactiveProducts }}</h3>
-          <p>Inactive</p>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon low-stock">
-          <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <div class="stat-content">
-          <h3>{{ lowStockProducts }}</h3>
-          <p>Low Stock</p>
-        </div>
-      </div>
+      <p>Loading products...</p>
     </div>
 
-    <!-- Products Table -->
-    <div class="products-table-container">
-      <table class="products-table" v-if="filteredProducts.length > 0">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Category</th>
-            <th>Price</th>
-            <th>Stock</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="product in filteredProducts" :key="product.id">
-            <td>
-              <div class="product-cell">
-                <div class="product-image">
-                  <img :src="product.image" :alt="product.name" />
+    <!-- Content (shown when not loading) -->
+    <div v-if="!isLoading">
+      <!-- Filters and Search -->
+      <div class="filters-section">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input
+            type="text"
+            v-model="searchQuery"
+            placeholder="Search products..."
+            @input="handleSearch"
+          />
+        </div>
+
+        <div class="filter-controls">
+          <select v-model="filterCategory" @change="handleFilter" class="filter-select">
+            <option value="">All Categories</option>
+            <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+              {{ cat.name }}
+            </option>
+          </select>
+
+          <select v-model="filterStatus" @change="handleFilter" class="filter-select">
+            <option value="">All Status</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+
+          <select v-model="sortBy" @change="handleSort" class="filter-select">
+            <option value="created_at">Newest First</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="price">Price (Low to High)</option>
+            <option value="stock">Stock (Low to High)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Products Stats -->
+      <div class="stats-section">
+        <div class="stat-card">
+          <div class="stat-icon total">
+            <i class="fas fa-box"></i>
+          </div>
+          <div class="stat-content">
+            <h3>{{ totalProducts }}</h3>
+            <p>Total Products</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon active">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-content">
+            <h3>{{ activeProducts }}</h3>
+            <p>Active</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon inactive">
+            <i class="fas fa-times-circle"></i>
+          </div>
+          <div class="stat-content">
+            <h3>{{ inactiveProducts }}</h3>
+            <p>Inactive</p>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon low-stock">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="stat-content">
+            <h3>{{ lowStockProducts }}</h3>
+            <p>Low Stock</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Products Table -->
+      <div class="products-table-container">
+        <table class="products-table" v-if="products.length > 0">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="product in products" :key="product.id">
+              <td>
+                <div class="product-cell">
+                  <div class="product-image">
+                    <img :src="product.image_url || product.image || 'https://via.placeholder.com/50'" :alt="product.name" />
+                  </div>
+                  <div class="product-info">
+                    <h4>{{ product.name }}</h4>
+                    <p>{{ product.sku }}</p>
+                  </div>
                 </div>
-                <div class="product-info">
-                  <h4>{{ product.name }}</h4>
-                  <p>{{ product.sku }}</p>
+              </td>
+              <td>
+                <span class="category-badge">{{ product.category }}</span>
+              </td>
+              <td>
+                <div class="price-cell">
+                  <span class="current-price">₱{{ formatPrice(product.price) }}</span>
+                  <span v-if="product.compare_price" class="compare-price">
+                    ₱{{ formatPrice(product.compare_price) }}
+                  </span>
                 </div>
-              </div>
-            </td>
-            <td>
-              <span class="category-badge">{{ product.category }}</span>
-            </td>
-            <td>
-              <div class="price-cell">
-                <span class="current-price">₱{{ formatPrice(product.price) }}</span>
-                <span v-if="product.comparePrice" class="compare-price">
-                  ₱{{ formatPrice(product.comparePrice) }}
+              </td>
+              <td>
+                <span class="stock-badge" :class="getStockClass(product.stock)">
+                  {{ product.stock }} units
                 </span>
-              </div>
-            </td>
-            <td>
-              <span class="stock-badge" :class="getStockClass(product.stock)">
-                {{ product.stock }} units
-              </span>
-            </td>
-            <td>
-              <span class="status-badge" :class="product.isActive ? 'status-active' : 'status-inactive'">
-                {{ product.isActive ? 'Active' : 'Inactive' }}
-              </span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn-action btn-view" @click="viewProduct(product.id)" title="View">
-                  <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn-action btn-edit" @click="editProduct(product.id)" title="Edit">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-action btn-delete" @click="confirmDelete(product)" title="Delete">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+              <td>
+                <span class="status-badge" :class="product.is_active ? 'status-active' : 'status-inactive'">
+                  {{ product.is_active ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-action btn-view" @click="viewProduct(product.id)" title="View">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn-action btn-edit" @click="editProduct(product.id)" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn-action btn-delete" @click="confirmDelete(product)" title="Delete">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-      <!-- Empty State -->
-      <div v-else class="empty-state">
-        <div class="empty-icon">
-          <i class="fas fa-box-open"></i>
+        <!-- Empty State -->
+        <div v-else class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-box-open"></i>
+          </div>
+          <h3>No Products Found</h3>
+          <p v-if="searchQuery || filterCategory || filterStatus">
+            Try adjusting your search or filters
+          </p>
+          <p v-else>
+            You haven't added any products yet
+          </p>
+          <router-link to="/products/add" class="btn-add-first">
+            <i class="fas fa-plus"></i>
+            Add Your First Product
+          </router-link>
         </div>
-        <h3>No Products Found</h3>
-        <p>{{ searchQuery ? 'Try adjusting your search or filters' : 'Start by adding your first product' }}</p>
-        <router-link to="/products/add" class="btn-add-first" v-if="!searchQuery">
-          <i class="fas fa-plus"></i>
-          Add Your First Product
-        </router-link>
       </div>
-    </div>
 
-    <!-- Pagination -->
-    <div class="pagination" v-if="filteredProducts.length > 0">
-      <button class="pagination-btn" :disabled="currentPage === 1" @click="previousPage">
-        <i class="fas fa-chevron-left"></i>
-        Previous
-      </button>
-      <div class="pagination-info">
-        Page {{ currentPage }} of {{ totalPages }}
+      <!-- Pagination -->
+      <div class="pagination" v-if="products.length > 0 && totalPages > 1">
+        <button class="pagination-btn" :disabled="currentPage === 1" @click="previousPage">
+          <i class="fas fa-chevron-left"></i>
+          Previous
+        </button>
+        <div class="pagination-info">
+          Page {{ currentPage }} of {{ totalPages }}
+        </div>
+        <button class="pagination-btn" :disabled="currentPage === totalPages" @click="nextPage">
+          Next
+          <i class="fas fa-chevron-right"></i>
+        </button>
       </div>
-      <button class="pagination-btn" :disabled="currentPage === totalPages" @click="nextPage">
-        Next
-        <i class="fas fa-chevron-right"></i>
-      </button>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -212,15 +238,15 @@
       @close="closeSuccessModal"
       @primary="closeSuccessModal"
     />
-  </div>
 
-     <!-- Product Detail Modal -->
+    <!-- Product Detail Modal -->
     <ProductDetailModal
       :show="showDetailModal"
       :product="selectedProduct"
       @close="closeDetailModal"
       @edit="editFromDetail"
     />
+  </div>
 </template>
 
 <script setup>
@@ -229,10 +255,11 @@ import { useRouter } from 'vue-router'
 import ConfirmModal from '@/components/modals/ConfirmModal.vue'
 import SuccessModal from '@/components/modals/SuccessModal.vue'
 import ProductDetailModal from '@/components/modals/ProductDetailModal.vue'
+import { productService } from '@/services/productService'
 
 const router = useRouter()
 
-// Categories (same as AddProduct)
+// Categories
 const categories = ref([
   { id: 1, name: 'Fashion' },
   { id: 2, name: 'Footwear' },
@@ -246,180 +273,22 @@ const categories = ref([
   { id: 10, name: 'Food & Beverages' }
 ])
 
-// Get products from localStorage or use static data
-const getStoredProducts = () => {
-  const stored = localStorage.getItem('products')
-  if (stored) {
-    return JSON.parse(stored)
-  }
-  
-  // Default static products
-  const defaultProducts = [
-    {
-      id: 1,
-      name: 'Premium Cotton T-Shirt',
-      description: 'Soft and comfortable premium cotton t-shirt. Perfect for everyday wear with a modern fit and breathable fabric.',
-      sku: 'PROD-001',
-      category: 'Fashion',
-      brand: 'StyleCo',
-      price: 599,
-      comparePrice: 799,
-      stock: 50,
-      isActive: true,
-      sizes: ['S', 'M', 'L', 'XL'],
-      color: 'Navy Blue',
-      weight: 0.2,
-      material: 'Cotton',
-      image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-11-15'
-    },
-    {
-      id: 2,
-      name: 'Wireless Bluetooth Headphones',
-      description: 'High-quality wireless headphones with noise cancellation, 30-hour battery life, and premium sound quality.',
-      sku: 'PROD-002',
-      category: 'Electronics',
-      brand: 'AudioPro',
-      price: 2499,
-      comparePrice: 3499,
-      stock: 25,
-      isActive: true,
-      color: 'Black',
-      weight: 0.3,
-      material: 'Plastic, Metal',
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop',
-      createdAt: '2024-02-10',
-      updatedAt: '2024-11-18'
-    },
-    {
-      id: 3,
-      name: 'Running Shoes',
-      description: 'Professional running shoes with advanced cushioning and breathable mesh upper. Ideal for marathon training.',
-      sku: 'PROD-003',
-      category: 'Footwear',
-      brand: 'RunFast',
-      price: 3999,
-      comparePrice: null,
-      stock: 8,
-      isActive: true,
-      sizes: ['39', '40', '41', '42', '43'],
-      color: 'White/Red',
-      weight: 0.5,
-      material: 'Mesh, Rubber',
-      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop',
-      createdAt: '2024-03-05',
-      updatedAt: '2024-11-10'
-    },
-    {
-      id: 4,
-      name: 'Yoga Mat',
-      description: 'Eco-friendly yoga mat with excellent grip and cushioning. Perfect for yoga, pilates, and stretching exercises.',
-      sku: 'PROD-004',
-      category: 'Sports & Outdoors',
-      brand: 'ZenFit',
-      price: 899,
-      comparePrice: 1299,
-      stock: 0,
-      isActive: false,
-      color: 'Purple',
-      weight: 1.2,
-      material: 'TPE',
-      image: 'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=200&h=200&fit=crop',
-      createdAt: '2024-04-20',
-      updatedAt: '2024-10-30'
-    },
-    {
-      id: 5,
-      name: 'Smart Watch',
-      description: 'Feature-packed smart watch with heart rate monitor, GPS, and 5-day battery life. Water resistant up to 50m.',
-      sku: 'PROD-005',
-      category: 'Electronics',
-      brand: 'TechTime',
-      price: 4999,
-      comparePrice: 6999,
-      stock: 15,
-      isActive: true,
-      color: 'Silver',
-      weight: 0.15,
-      material: 'Aluminum, Silicone',
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop',
-      createdAt: '2024-05-12',
-      updatedAt: '2024-11-19'
-    },
-    {
-      id: 6,
-      name: 'Leather Wallet',
-      description: 'Handcrafted genuine leather wallet with RFID protection. Multiple card slots and bill compartments.',
-      sku: 'PROD-006',
-      category: 'Accessories',
-      brand: 'LeatherCraft',
-      price: 799,
-      comparePrice: null,
-      stock: 30,
-      isActive: true,
-      color: 'Brown',
-      weight: 0.1,
-      material: 'Genuine Leather',
-      image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=200&h=200&fit=crop',
-      createdAt: '2024-06-08',
-      updatedAt: '2024-11-12'
-    },
-    {
-      id: 7,
-      name: 'Organic Face Cream',
-      description: 'Natural organic face cream with vitamin E and hyaluronic acid. Suitable for all skin types.',
-      sku: 'PROD-007',
-      category: 'Beauty & Personal Care',
-      brand: 'NaturalGlow',
-      price: 1299,
-      comparePrice: 1599,
-      stock: 5,
-      isActive: true,
-      color: 'White',
-      weight: 0.05,
-      material: 'Organic Ingredients',
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=200&h=200&fit=crop',
-      createdAt: '2024-07-15',
-      updatedAt: '2024-11-14'
-    },
-    {
-      id: 8,
-      name: 'Gaming Mouse',
-      description: 'Professional gaming mouse with RGB lighting, 16000 DPI, and programmable buttons. Ultra-precise sensor.',
-      sku: 'PROD-008',
-      category: 'Electronics',
-      brand: 'GamePro',
-      price: 1899,
-      comparePrice: 2499,
-      stock: 20,
-      isActive: true,
-      color: 'Black/RGB',
-      weight: 0.12,
-      material: 'Plastic, Metal',
-      image: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=200&h=200&fit=crop',
-      createdAt: '2024-08-22',
-      updatedAt: '2024-11-16'
-    }
-  ]
-  
-  // Save default products to localStorage
-  localStorage.setItem('products', JSON.stringify(defaultProducts))
-  return defaultProducts
-}
-
-// Load products from storage
-const products = ref(getStoredProducts())
+// State
+const products = ref([])
+const isLoading = ref(false)
+const errorMessage = ref('')
 
 // Filter states
 const searchQuery = ref('')
 const filterCategory = ref('')
 const filterStatus = ref('')
-const sortBy = ref('newest')
+const sortBy = ref('created_at')
+const sortOrder = ref('desc')
 
 // Pagination
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
+const totalProducts = ref(0)
 
 // Modal states
 const showDeleteModal = ref(false)
@@ -432,71 +301,15 @@ const successTitle = ref('')
 const successMessage = ref('')
 
 // Computed properties
-const totalProducts = computed(() => products.value.length)
-const activeProducts = computed(() => products.value.filter(p => p.isActive).length)
-const inactiveProducts = computed(() => products.value.filter(p => !p.isActive).length)
+const activeProducts = computed(() => products.value.filter(p => p.is_active).length)
+const inactiveProducts = computed(() => products.value.filter(p => !p.is_active).length)
 const lowStockProducts = computed(() => products.value.filter(p => p.stock < 10 && p.stock > 0).length)
 
-const filteredProducts = computed(() => {
-  let filtered = [...products.value]
-
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.sku.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query)
-    )
-  }
-
-  // Category filter
-  if (filterCategory.value) {
-    filtered = filtered.filter(p => p.category === getCategoryName(filterCategory.value))
-  }
-
-  // Status filter
-  if (filterStatus.value) {
-    filtered = filtered.filter(p => 
-      filterStatus.value === 'active' ? p.isActive : !p.isActive
-    )
-  }
-
-  // Sorting
-  switch (sortBy.value) {
-    case 'newest':
-      filtered.sort((a, b) => b.id - a.id)
-      break
-    case 'oldest':
-      filtered.sort((a, b) => a.id - b.id)
-      break
-    case 'name-asc':
-      filtered.sort((a, b) => a.name.localeCompare(b.name))
-      break
-    case 'name-desc':
-      filtered.sort((a, b) => b.name.localeCompare(a.name))
-      break
-    case 'price-asc':
-      filtered.sort((a, b) => a.price - b.price)
-      break
-    case 'price-desc':
-      filtered.sort((a, b) => b.price - a.price)
-      break
-  }
-
-  return filtered
-})
-
 const totalPages = computed(() => {
-  return Math.ceil(filteredProducts.value.length / itemsPerPage.value)
+  return Math.ceil(totalProducts.value / itemsPerPage.value)
 })
 
 // Methods
-const getCategoryName = (categoryId) => {
-  const cat = categories.value.find(c => c.id === parseInt(categoryId))
-  return cat ? cat.name : ''
-}
-
 const formatPrice = (price) => {
   return new Intl.NumberFormat('en-PH', {
     minimumFractionDigits: 2,
@@ -510,32 +323,82 @@ const getStockClass = (stock) => {
   return 'stock-good'
 }
 
+const loadProducts = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const params = {
+      search: searchQuery.value,
+      category: filterCategory.value,
+      is_active: filterStatus.value,
+      sort_by: sortBy.value,
+      sort_order: sortOrder.value,
+      per_page: itemsPerPage.value,
+      page: currentPage.value
+    }
+
+    // Remove empty params
+    Object.keys(params).forEach(key => {
+      if (params[key] === '' || params[key] === null) {
+        delete params[key]
+      }
+    })
+
+    console.log('📥 Loading products with params:', params)
+
+    const response = await productService.getAllProducts(params)
+    
+    console.log('✅ Products loaded:', response)
+
+    if (response.success) {
+      if (response.data.data) {
+        // Paginated response
+        products.value = response.data.data
+        totalProducts.value = response.data.total
+        currentPage.value = response.data.current_page
+      } else {
+        // Non-paginated response
+        products.value = response.data
+        totalProducts.value = response.data.length
+      }
+    }
+
+    isLoading.value = false
+  } catch (error) {
+    console.error('❌ Error loading products:', error)
+    errorMessage.value = error.message || 'Failed to load products'
+    isLoading.value = false
+  }
+}
+
 const handleSearch = () => {
   currentPage.value = 1
+  loadProducts()
 }
 
 const handleFilter = () => {
   currentPage.value = 1
+  loadProducts()
 }
 
 const handleSort = () => {
   currentPage.value = 1
+  loadProducts()
 }
 
 const previousPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    loadProducts()
   }
 }
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    loadProducts()
   }
-}
-
-const reloadProducts = () => {
-  products.value = getStoredProducts()
 }
 
 const viewProduct = (productId) => {
@@ -567,17 +430,15 @@ const cancelDelete = () => {
   productToDelete.value = null
 }
 
-const deleteProduct = () => {
+const deleteProduct = async () => {
   isDeleting.value = true
 
-  // Simulate API call
-  setTimeout(() => {
-    const index = products.value.findIndex(p => p.id === productToDelete.value.id)
-    if (index !== -1) {
-      products.value.splice(index, 1)
-      // Update localStorage
-      localStorage.setItem('products', JSON.stringify(products.value))
-    }
+  try {
+    console.log('🗑️ Deleting product:', productToDelete.value.id)
+
+    const response = await productService.deleteProduct(productToDelete.value.id)
+    
+    console.log('✅ Product deleted:', response)
 
     isDeleting.value = false
     showDeleteModal.value = false
@@ -588,7 +449,15 @@ const deleteProduct = () => {
     showSuccessModal.value = true
 
     productToDelete.value = null
-  }, 1500)
+
+    // Reload products
+    loadProducts()
+  } catch (error) {
+    console.error('❌ Error deleting product:', error)
+    errorMessage.value = error.message || 'Failed to delete product'
+    isDeleting.value = false
+    showDeleteModal.value = false
+  }
 }
 
 const closeSuccessModal = () => {
@@ -596,9 +465,18 @@ const closeSuccessModal = () => {
 }
 
 onMounted(() => {
-  console.log('Product List loaded')
-  // Reload products when returning to page
-  reloadProducts()
+  console.log('✅ ProductList mounted')
+  
+  // Check if user is authenticated
+  const token = localStorage.getItem('seller_token')
+  if (!token) {
+    console.log('❌ No token found, redirecting to login')
+    router.push('/login')
+    return
+  }
+
+  // Load products from API
+  loadProducts()
 })
 </script>
 
@@ -649,6 +527,102 @@ onMounted(() => {
 .btn-add-product:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Error Alert */
+.error-alert {
+  background: #fee;
+  border: 2px solid #fcc;
+  color: #c33;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+.error-alert i.fa-exclamation-circle {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.error-content p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.close-error {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #c33;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.close-error:hover {
+  background: #fcc;
+  color: #a00;
+}
+
+/* Loading State */
+.loading-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #f8f9ff;
+  color: #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  margin: 0 auto 1.5rem;
+}
+
+.loading-container p {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .filters-section {
