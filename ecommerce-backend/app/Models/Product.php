@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-     use HasFactory;
+    use HasFactory;
 
     protected $fillable = [
         'seller_id',
@@ -31,6 +31,7 @@ class Product extends Model
         'price' => 'decimal:2',
         'compare_price' => 'decimal:2',
         'weight' => 'decimal:2',
+        'stock' => 'integer', 
         'is_active' => 'boolean',
         'sizes' => 'array',
         'created_at' => 'datetime',

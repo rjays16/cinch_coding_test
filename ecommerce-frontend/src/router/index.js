@@ -5,6 +5,7 @@ import Register from '../views/Register.vue'
 import ForgotPassword from '../views/ForgotPassword.vue'
 import ResetPassword from '../views/ResetPassword.vue'
 import { authService } from '../services/authService'
+import Products from '../views/Products.vue'
 
 const routes = [
   {
@@ -35,6 +36,16 @@ const routes = [
     name: 'ResetPassword',
     component: ResetPassword,
     meta: { guest: true }
+  },
+  {
+    path: '/products',
+    name: 'Products',
+    component: Products
+  },
+  {
+    path: '/products/:id',
+    name: 'ProductDetail',
+    component: () => import('../views/ProductDetail.vue')
   }
 ]
 

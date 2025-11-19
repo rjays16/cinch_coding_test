@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\SellerAuthController;
 use App\Http\Controllers\Auth\BuyerAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PublicProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,13 @@ Route::prefix('buyer')->group(function () {
 Route::middleware('auth:sanctum')->prefix('buyer')->group(function () {
     Route::post('/logout', [BuyerAuthController::class, 'logout']);
     Route::get('/profile', [BuyerAuthController::class, 'profile']);
+});
+
+// Public product routes (no authentication required)
+Route::prefix('products')->group(function () {
+    Route::get('/', [PublicProductController::class, 'index']);
+    Route::get('/categories', [PublicProductController::class, 'categories']);
+    Route::get('/{id}', [PublicProductController::class, 'show']);
 });
 
 // Password Reset (shared endpoint for both)
