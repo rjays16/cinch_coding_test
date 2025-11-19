@@ -1,5 +1,6 @@
 <template>
   <div class="add-product-page">
+    <!-- Page Header -->
     <div class="page-header">
       <div class="header-content">
         <div class="header-left">
@@ -8,12 +9,25 @@
           </router-link>
           <div>
             <h1>Add New Product</h1>
-            <p class="subtitle">Create a new product listing for your store</p>
+            <p class="subtitle">Create a new product for your store</p>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Error Alert -->
+    <div v-if="errorMessage" class="error-alert">
+      <i class="fas fa-exclamation-circle"></i>
+      <div class="error-content">
+        <strong>Error</strong>
+        <p>{{ errorMessage }}</p>
+      </div>
+      <button @click="errorMessage = ''" class="close-error">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Form Container -->
     <div class="form-container">
       <form @submit.prevent="handleSubmit" class="product-form">
         <!-- Basic Information Section -->
@@ -30,9 +44,11 @@
                 type="text"
                 id="productName"
                 v-model="product.name"
+                :class="{ 'input-error': errors.name }"
                 placeholder="Enter product name"
                 required
               />
+              <span v-if="errors.name" class="error-text">{{ errors.name[0] }}</span>
             </div>
           </div>
 
@@ -42,22 +58,31 @@
               <textarea
                 id="description"
                 v-model="product.description"
+                :class="{ 'input-error': errors.description }"
                 placeholder="Describe your product..."
                 rows="5"
                 required
               ></textarea>
+              <span v-if="errors.description" class="error-text">{{ errors.description[0] }}</span>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="category">Category <span class="required">*</span></label>
-              <select id="category" v-model="product.category" required @change="handleCategoryChange">
+              <select 
+                id="category" 
+                v-model="product.category" 
+                :class="{ 'input-error': errors.category }"
+                required 
+                @change="handleCategoryChange"
+              >
                 <option value="">Select a category</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                <option v-for="cat in categories" :key="cat.id" :value="cat.name">
                   {{ cat.name }}
                 </option>
               </select>
+              <span v-if="errors.category" class="error-text">{{ errors.category[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -66,8 +91,26 @@
                 type="text"
                 id="brand"
                 v-model="product.brand"
+                :class="{ 'input-error': errors.brand }"
                 placeholder="Enter brand name"
               />
+              <span v-if="errors.brand" class="error-text">{{ errors.brand[0] }}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sku">SKU (Stock Keeping Unit) <span class="required">*</span></label>
+              <input
+                type="text"
+                id="sku"
+                v-model="product.sku"
+                :class="{ 'input-error': errors.sku }"
+                placeholder="e.g., PROD-001"
+                required
+              />
+              <small class="helper-text">Unique identifier for this product</small>
+              <span v-if="errors.sku" class="error-text">{{ errors.sku[0] }}</span>
             </div>
           </div>
         </div>
@@ -88,12 +131,14 @@
                   type="number"
                   id="price"
                   v-model.number="product.price"
+                  :class="{ 'input-error': errors.price }"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
                   required
                 />
               </div>
+              <span v-if="errors.price" class="error-text">{{ errors.price[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -104,12 +149,14 @@
                   type="number"
                   id="comparePrice"
                   v-model.number="product.comparePrice"
+                  :class="{ 'input-error': errors.compare_price }"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
                 />
               </div>
               <small class="helper-text">Original price to show discount</small>
+              <span v-if="errors.compare_price" class="error-text">{{ errors.compare_price[0] }}</span>
             </div>
           </div>
 
@@ -148,6 +195,7 @@
                 </label>
               </div>
               <small class="helper-text">Select all sizes available for this product</small>
+              <span v-if="errors.sizes" class="error-text">{{ errors.sizes[0] }}</span>
             </div>
           </div>
 
@@ -159,20 +207,12 @@
                 type="number"
                 id="stock"
                 v-model.number="product.stock"
+                :class="{ 'input-error': errors.stock }"
                 placeholder="0"
                 min="0"
                 required
               />
-            </div>
-
-            <div class="form-group">
-              <label for="sku">SKU (Stock Keeping Unit)</label>
-              <input
-                type="text"
-                id="sku"
-                v-model="product.sku"
-                placeholder="e.g., PROD-001"
-              />
+              <span v-if="errors.stock" class="error-text">{{ errors.stock[0] }}</span>
             </div>
           </div>
 
@@ -194,31 +234,29 @@
 
           <div class="form-row">
             <div class="form-group full-width">
-              <label>Upload Images</label>
-              <div class="image-upload-area">
-                <div class="upload-placeholder">
+              <label>Upload Product Image</label>
+              <div class="image-upload-area" @click="$refs.fileInput.click()">
+                <div v-if="!imagePreview" class="upload-placeholder">
                   <i class="fas fa-cloud-upload-alt"></i>
                   <p>Click to upload or drag and drop</p>
-                  <small>PNG, JPG, GIF up to 10MB</small>
+                  <small>PNG, JPG, GIF, WEBP up to 5MB</small>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  @change="handleImageUpload"
-                  class="file-input"
-                />
-              </div>
-
-              <!-- Image Preview -->
-              <div v-if="product.images.length > 0" class="image-preview-grid">
-                <div v-for="(image, index) in product.images" :key="index" class="image-preview-item">
-                  <img :src="image.preview" :alt="`Product ${index + 1}`" />
-                  <button type="button" class="remove-image" @click="removeImage(index)">
+                <div v-else class="image-preview">
+                  <img :src="imagePreview" alt="Product preview" />
+                  <button type="button" class="remove-image" @click.stop="removeImage">
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
               </div>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                @change="handleImageUpload"
+                class="file-input"
+                hidden
+              />
+              <span v-if="errors.image" class="error-text">{{ errors.image[0] }}</span>
             </div>
           </div>
         </div>
@@ -237,8 +275,10 @@
                 type="text"
                 id="color"
                 v-model="product.color"
+                :class="{ 'input-error': errors.color }"
                 placeholder="e.g., Red, Blue, Black"
               />
+              <span v-if="errors.color" class="error-text">{{ errors.color[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -247,10 +287,12 @@
                 type="number"
                 id="weight"
                 v-model.number="product.weight"
+                :class="{ 'input-error': errors.weight }"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
               />
+              <span v-if="errors.weight" class="error-text">{{ errors.weight[0] }}</span>
             </div>
           </div>
 
@@ -261,8 +303,10 @@
                 type="text"
                 id="material"
                 v-model="product.material"
+                :class="{ 'input-error': errors.material }"
                 placeholder="e.g., Cotton, Leather, Plastic"
               />
+              <span v-if="errors.material" class="error-text">{{ errors.material[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -288,9 +332,15 @@
             <i class="fas fa-times"></i>
             Cancel
           </button>
-          <button type="submit" class="btn-submit">
-            <i class="fas fa-plus-circle"></i>
-            Add Product
+          <button type="submit" class="btn-submit" :disabled="isSaving">
+            <span v-if="!isSaving">
+              <i class="fas fa-plus"></i>
+              Add Product
+            </span>
+            <span v-else>
+              <i class="fas fa-spinner fa-spin"></i>
+              Saving...
+            </span>
           </button>
         </div>
       </form>
@@ -300,27 +350,51 @@
     <SuccessModal
       :show="showSuccessModal"
       title="Product Added Successfully!"
-      message="Your product has been added to the store."
-      primary-text="Add Another"
-      primary-icon="fas fa-plus"
-      secondary-text="View Products"
-      secondary-icon="fas fa-list"
-      :show-secondary-button="true"
-      @close="closeSuccessModal"
-      @primary="addAnother"
-      @secondary="viewProducts"
+      message="Your product has been added to your store."
+      primary-text="Go to Products"
+      primary-icon="fas fa-list"
+      secondary-text="Add Another"
+      secondary-icon="fas fa-plus"
+      @close="backToProducts"
+      @primary="backToProducts"
+      @secondary="addAnother"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import SuccessModal from '@/components/modals/SuccessModal.vue'
+import { productService } from '@/services/productService'
 
 const router = useRouter()
 
-// Static categories data
+// Form state
+const product = ref({
+  name: '',
+  description: '',
+  sku: '',
+  category: '',
+  brand: '',
+  price: null,
+  comparePrice: null,
+  stock: null,
+  isActive: true,
+  sizes: [],
+  color: '',
+  weight: null,
+  material: '',
+  image: null
+})
+
+const imagePreview = ref(null)
+const isSaving = ref(false)
+const showSuccessModal = ref(false)
+const errorMessage = ref('')
+const errors = ref({})
+
+// Categories
 const categories = ref([
   { id: 1, name: 'Fashion', requiresSizes: true, sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
   { id: 2, name: 'Footwear', requiresSizes: true, sizes: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'] },
@@ -334,29 +408,9 @@ const categories = ref([
   { id: 10, name: 'Food & Beverages', requiresSizes: false, sizes: [] }
 ])
 
-// Product form data
-const product = ref({
-  name: '',
-  description: '',
-  category: '',
-  brand: '',
-  price: null,
-  comparePrice: null,
-  stock: null,
-  sku: '',
-  sizes: [],
-  color: '',
-  weight: null,
-  material: '',
-  isActive: true,
-  images: []
-})
-
-const showSuccessModal = ref(false)
-
 // Computed properties
 const selectedCategory = computed(() => {
-  return categories.value.find(cat => cat.id === product.value.category)
+  return categories.value.find(cat => cat.name === product.value.category)
 })
 
 const requiresSizes = computed(() => {
@@ -398,37 +452,94 @@ const stockStatusText = computed(() => {
 
 // Methods
 const handleCategoryChange = () => {
-  // Clear sizes when category changes
   product.value.sizes = []
 }
 
 const handleImageUpload = (event) => {
-  const files = event.target.files
+  const file = event.target.files[0]
   
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    const reader = new FileReader()
-    
-    reader.onload = (e) => {
-      product.value.images.push({
-        file: file,
-        preview: e.target.result
-      })
+  if (file) {
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      errorMessage.value = 'Image size must be less than 5MB'
+      return
     }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      errorMessage.value = 'Image must be JPEG, PNG, JPG, GIF, or WEBP'
+      return
+    }
+
+    product.value.image = file
     
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      imagePreview.value = e.target.result
+    }
     reader.readAsDataURL(file)
+    
+    errorMessage.value = ''
   }
 }
 
-const removeImage = (index) => {
-  product.value.images.splice(index, 1)
+const removeImage = () => {
+  product.value.image = null
+  imagePreview.value = null
 }
 
-const handleSubmit = () => {
-  console.log('Product Data:', product.value)
+const handleSubmit = async () => {
+  console.log('📤 Submitting product:', product.value)
   
-  // Show success modal
-  showSuccessModal.value = true
+  // Clear previous errors
+  errors.value = {}
+  errorMessage.value = ''
+  isSaving.value = true
+
+  try {
+    // Prepare data for API
+    const productData = {
+      name: product.value.name,
+      description: product.value.description,
+      sku: product.value.sku,
+      category: product.value.category,
+      brand: product.value.brand,
+      price: product.value.price,
+      compare_price: product.value.comparePrice,
+      stock: product.value.stock,
+      is_active: product.value.isActive ? 1 : 0,
+      sizes: product.value.sizes,
+      color: product.value.color,
+      weight: product.value.weight,
+      material: product.value.material,
+      image: product.value.image
+    }
+
+    // Call API
+    const response = await productService.createProduct(productData)
+    
+    console.log('✅ Product created successfully:', response)
+    
+    // Show success modal
+    isSaving.value = false
+    showSuccessModal.value = true
+    
+  } catch (error) {
+    console.error('❌ Error creating product:', error)
+    
+    if (error.errors) {
+      // Laravel validation errors
+      errors.value = error.errors
+      errorMessage.value = error.message || 'Please fix the validation errors'
+    } else if (error.message) {
+      errorMessage.value = error.message
+    } else {
+      errorMessage.value = 'Failed to create product. Please try again.'
+    }
+    
+    isSaving.value = false
+  }
 }
 
 const handleCancel = () => {
@@ -437,7 +548,7 @@ const handleCancel = () => {
   }
 }
 
-const closeSuccessModal = () => {
+const backToProducts = () => {
   showSuccessModal.value = false
   router.push('/products')
 }
@@ -449,24 +560,38 @@ const addAnother = () => {
   product.value = {
     name: '',
     description: '',
+    sku: '',
     category: '',
     brand: '',
     price: null,
     comparePrice: null,
     stock: null,
-    sku: '',
+    isActive: true,
     sizes: [],
     color: '',
     weight: null,
     material: '',
-    isActive: true,
-    images: []
+    image: null
   }
+  
+  imagePreview.value = null
+  errors.value = {}
+  errorMessage.value = ''
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const viewProducts = () => {
-  closeSuccessModal()
-}
+onMounted(() => {
+  console.log('✅ AddProduct component mounted')
+  
+  // Check if user is authenticated
+  const token = localStorage.getItem('seller_token')
+  if (!token) {
+    console.log('❌ No token found, redirecting to login')
+    router.push('/login')
+  }
+})
 </script>
 
 <style scoped>
@@ -522,6 +647,88 @@ const viewProducts = () => {
   color: #666;
   margin: 0.25rem 0 0 0;
   font-size: 0.9rem;
+}
+
+/* Error Alert */
+.error-alert {
+  background: #fee;
+  border: 2px solid #fcc;
+  color: #c33;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+.error-alert i.fa-exclamation-circle {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.error-content p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.close-error {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #c33;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.close-error:hover {
+  background: #fcc;
+  color: #a00;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Input Error State */
+.input-error {
+  border-color: #e74c3c !important;
+  background: #fff5f5 !important;
+}
+
+.error-text {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  display: block;
+  font-weight: 500;
 }
 
 .form-container {
@@ -725,6 +932,7 @@ const viewProducts = () => {
   text-align: center;
   transition: all 0.3s;
   cursor: pointer;
+  margin-top: 0.5rem;
 }
 
 .image-upload-area:hover {
@@ -749,31 +957,19 @@ const viewProducts = () => {
 }
 
 .file-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  display: none;
 }
 
-.image-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.image-preview-item {
+.image-preview {
   position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  border-radius: 12px;
   overflow: hidden;
-  border: 2px solid #e0e0e0;
 }
 
-.image-preview-item img {
+.image-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -783,8 +979,8 @@ const viewProducts = () => {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(231, 76, 60, 0.9);
   color: white;
@@ -882,9 +1078,15 @@ const viewProducts = () => {
   color: white;
 }
 
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Responsive */

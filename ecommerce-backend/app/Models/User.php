@@ -92,4 +92,13 @@ class User extends Authenticatable
     {
         return $query->where('role', 'buyer');
     }
+
+    /**
+    * Get the products for the seller.
+    */
+
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'seller_id');
+    }
 }
