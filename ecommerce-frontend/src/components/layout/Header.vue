@@ -8,7 +8,7 @@
 
         <nav class="nav-links">
           <router-link to="/">Home</router-link>
-          <router-link to="/be-a-seller" class="seller-link">Be A Seller</router-link>
+          <a :href="sellerPortalUrl" target="_blank" class="seller-link">Be A Seller</a>
           <router-link to="/about">About</router-link>
           <router-link to="/contact">Contact</router-link>
         </nav>
@@ -60,7 +60,8 @@ export default {
       userName: '',
       cartCount: 0,
       showLogoutModal: false,
-      isLoggingOut: false  // ← NEW: Track logout state
+      isLoggingOut: false,
+      sellerPortalUrl: process.env.VUE_APP_SELLER_PORTAL_URL || 'http://localhost:5173'
     }
   },
   mounted() {
@@ -78,7 +79,7 @@ export default {
     },
 
     async handleLogout() {
-      this.isLoggingOut = true  // ← Set loading state
+      this.isLoggingOut = true
 
       try {
         await authService.logout()
@@ -153,6 +154,12 @@ export default {
 .seller-link {
   color: #42b983 !important;
   font-weight: bold !important;
+  position: relative;
+}
+
+.seller-link:hover {
+  color: #5dcea4 !important;
+  transform: translateY(-2px);
 }
 
 .header-actions {
