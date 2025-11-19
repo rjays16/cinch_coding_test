@@ -109,7 +109,7 @@
       </div>
     </div>
 
-    <!-- Recent Products Section (SECOND!) -->
+    <!-- Recent Products Section -->
     <div class="dashboard-section">
       <div class="section-header">
         <div>
@@ -125,20 +125,28 @@
         </router-link>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <p>Loading products...</p>
+      </div>
+
       <!-- Recent Products List -->
-      <div class="recent-products" v-if="recentProducts.length > 0">
+      <div v-else-if="recentProducts.length > 0" class="recent-products">
         <div 
           v-for="product in recentProducts" 
           :key="product.id" 
           class="product-card"
         >
           <div class="product-image">
-            <img :src="product.image" :alt="product.name" />
+            <img :src="getProductImage(product)" :alt="product.name" />
             <span 
               class="product-status" 
-              :class="product.isActive ? 'status-active' : 'status-inactive'"
+              :class="getProductStatus(product) ? 'status-active' : 'status-inactive'"
             >
-              {{ product.isActive ? 'Active' : 'Inactive' }}
+              {{ getProductStatus(product) ? 'Active' : 'Inactive' }}
             </span>
           </div>
 
@@ -156,7 +164,7 @@
             </div>
             <p class="product-date">
               <i class="fas fa-calendar"></i>
-              Added {{ formatDate(product.createdAt) }}
+              Added {{ formatDate(getProductCreatedAt(product)) }}
             </p>
           </div>
 
@@ -207,23 +215,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ProductDetailModal from '@/components/modals/ProductDetailModal.vue'
+import { productService } from '@/services/productService'
 
 const router = useRouter()
+
+// State
+const products = ref([])
+const isLoading = ref(true)
+const errorMessage = ref('')
 
 // Modal states
 const showDetailModal = ref(false)
 const selectedProduct = ref(null)
-
-// Get products from localStorage
-const getStoredProducts = () => {
-  const stored = localStorage.getItem('products')
-  if (stored) {
-    return JSON.parse(stored)
-  }
-  return []
-}
-
-const products = ref(getStoredProducts())
 
 // Computed properties
 const totalProducts = computed(() => products.value.length)
@@ -231,7 +234,7 @@ const totalProducts = computed(() => products.value.length)
 const totalRevenue = computed(() => {
   // Calculate total revenue (example calculation)
   return products.value.reduce((sum, product) => {
-    return sum + (product.price * 10) // Assuming 10 sales per product
+    return sum + (parseFloat(product.price) * 10) // Assuming 10 sales per product
   }, 0)
 })
 
@@ -243,13 +246,40 @@ const lowStockCount = computed(() => {
 const recentProducts = computed(() => {
   return [...products.value]
     .sort((a, b) => {
-      // Sort by ID (assuming higher ID = more recent)
-      return b.id - a.id
+      // Sort by created_at or id (most recent first)
+      const dateA = new Date(a.created_at || a.createdAt || 0)
+      const dateB = new Date(b.created_at || b.createdAt || 0)
+      return dateB - dateA
     })
     .slice(0, 6)
 })
 
 // Methods
+const loadProducts = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+
+    const response = await productService.getAllProducts({
+      per_page: 'all', // Get all products for stats
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    })
+    
+    console.log('✅ Products loaded:', response)
+
+    if (response.success) {
+      products.value = response.data
+    }
+
+    isLoading.value = false
+  } catch (error) {
+    errorMessage.value = error.message || 'Failed to load products'
+    isLoading.value = false
+  }
+}
+
 const formatPrice = (price) => {
   return new Intl.NumberFormat('en-PH', {
     minimumFractionDigits: 2,
@@ -283,6 +313,18 @@ const getStockClass = (stock) => {
   return 'stock-good'
 }
 
+const getProductImage = (product) => {
+  return product.image_url || product.image || 'https://via.placeholder.com/100'
+}
+
+const getProductStatus = (product) => {
+  return product.is_active !== undefined ? product.is_active : product.isActive
+}
+
+const getProductCreatedAt = (product) => {
+  return product.created_at || product.createdAt
+}
+
 const viewProduct = (productId) => {
   selectedProduct.value = products.value.find(p => p.id === productId)
   showDetailModal.value = true
@@ -302,13 +344,18 @@ const editFromDetail = (productId) => {
   editProduct(productId)
 }
 
-const reloadProducts = () => {
-  products.value = getStoredProducts()
-}
-
 onMounted(() => {
-  console.log('Dashboard loaded')
-  reloadProducts()
+  console.log('✅ Dashboard mounted')
+  
+  // Check if user is authenticated
+  const token = localStorage.getItem('seller_token')
+  if (!token) {
+    router.push('/login')
+    return
+  }
+
+  // Load products from API
+  loadProducts()
 })
 </script>
 
@@ -539,6 +586,31 @@ onMounted(() => {
   margin: 0;
   color: #999;
   font-size: 0.85rem;
+}
+
+/* Loading State */
+.loading-state {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #f8f9ff;
+  color: #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1rem;
+}
+
+.loading-state p {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
 }
 
 /* Recent Products */
