@@ -1,8 +1,9 @@
 <template>
   <div class="products-page">
-    <!-- Page Header -->
+    <!-- Page Header with Image Overlay -->
     <div class="page-header">
-      <div class="container">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
         <h1>Our Products</h1>
         <p class="subtitle">Discover amazing products from our sellers</p>
       </div>
@@ -316,23 +317,44 @@ onMounted(() => {
   padding: 0 2rem;
 }
 
-/* Page Header */
+/* Page Header - Image Overlay (Same as Home.vue) */
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  height: 400px;
+  background-image: url('@/assets/images/photo-overlay.jpg');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: white;
-  padding: 3rem 0;
   text-align: center;
 }
 
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
 .page-header h1 {
-  font-size: 2.5rem;
-  margin: 0 0 0.5rem 0;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
 }
 
 .subtitle {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   margin: 0;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 /* Filters Section */
@@ -661,8 +683,16 @@ onMounted(() => {
     padding: 0 1rem;
   }
 
+  .page-header {
+    height: 300px;
+  }
+
   .page-header h1 {
     font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
   }
 
   .filters-bar {

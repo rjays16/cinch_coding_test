@@ -16,6 +16,55 @@
         <div class="container">
           <h2 class="section-title">Trending Products</h2>
           
+          <!-- Search and Filter Bar -->
+          <div class="filters-container">
+            <!-- Search Box -->
+            <div class="search-box">
+              <i class="fas fa-search search-icon"></i>
+              <input 
+                type="text" 
+                v-model="searchQuery"
+                @input="handleSearch"
+                placeholder="Search products..." 
+                class="search-input"
+              />
+              <button 
+                v-if="searchQuery" 
+                @click="clearSearch" 
+                class="btn-clear-search"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="category-filter">
+              <button 
+                @click="filterByCategory('all')"
+                :class="['category-btn', { active: selectedCategory === 'all' }]"
+              >
+                All
+              </button>
+              <button 
+                v-for="category in categories"
+                :key="category"
+                @click="filterByCategory(category)"
+                :class="['category-btn', { active: selectedCategory === category }]"
+              >
+                {{ category }}
+              </button>
+            </div>
+
+            <!-- Results Count -->
+            <div class="results-info">
+              <p v-if="searchQuery || selectedCategory !== 'all'">
+                Showing {{ filteredProducts.length }} of {{ allProducts.length }} products
+                <span v-if="searchQuery"> for "<strong>{{ searchQuery }}</strong>"</span>
+                <span v-if="selectedCategory !== 'all'"> in <strong>{{ selectedCategory }}</strong></span>
+              </p>
+            </div>
+          </div>
+          
           <!-- Loading State -->
           <div v-if="isLoading" class="loading-container">
             <div class="loading-spinner">
@@ -25,9 +74,9 @@
           </div>
 
           <!-- Products Grid -->
-          <div v-else-if="products.length > 0" class="products-grid">
+          <div v-else-if="displayedProducts.length > 0" class="products-grid">
             <div 
-              v-for="product in products" 
+              v-for="product in displayedProducts" 
               :key="product.id" 
               class="product-card"
               @click="viewProductDetail(product)"
@@ -74,8 +123,13 @@
           <!-- Empty State -->
           <div v-else class="empty-state">
             <i class="fas fa-box-open"></i>
-            <h3>No Products Available</h3>
-            <p>Check back later for new products</p>
+            <h3>No Products Found</h3>
+            <p v-if="searchQuery || selectedCategory !== 'all'">
+              Try adjusting your search or filter
+            </p>
+            <p v-else>
+              Check back later for new products
+            </p>
           </div>
 
           <!-- Load More Button -->
@@ -83,7 +137,7 @@
             <button @click="loadMoreProducts" class="btn-load-more">
               <i class="fas fa-sync-alt"></i>
               Load More Products
-              <span class="products-count">({{ allProducts.length - products.length }} remaining)</span>
+              <span class="products-count">({{ filteredProducts.length - displayedProducts.length }} remaining)</span>
             </button>
           </div>
         </div>
@@ -140,21 +194,53 @@ export default {
   },
   data() {
     return {
-      products: [],
-      allProducts: [], // Store all products
+      allProducts: [],
+      displayedProducts: [],
       isLoading: false,
       showQuickView: false,
       selectedProduct: null,
-      displayCount: 9, // Initially show 9 products
-      loadMoreCount: 6  // Load 6 more each time
+      displayCount: 9,
+      loadMoreCount: 6,
+      searchQuery: '',
+      selectedCategory: 'all',
+      categories: []
     }
   },
   computed: {
+    filteredProducts() {
+      let filtered = [...this.allProducts]
+
+      // Filter by category
+      if (this.selectedCategory !== 'all') {
+        filtered = filtered.filter(p => p.category === this.selectedCategory)
+      }
+
+      // Filter by search query
+      if (this.searchQuery.trim()) {
+        const query = this.searchQuery.toLowerCase().trim()
+        filtered = filtered.filter(product => 
+          product.name.toLowerCase().includes(query) ||
+          product.category.toLowerCase().includes(query) ||
+          (product.description && product.description.toLowerCase().includes(query)) ||
+          (product.brand && product.brand.toLowerCase().includes(query))
+        )
+      }
+
+      return filtered
+    },
     hasMoreProducts() {
-      return this.products.length < this.allProducts.length
+      return this.displayedProducts.length < this.filteredProducts.length
     },
     showLoadMore() {
-      return this.allProducts.length > 6 && this.hasMoreProducts
+      return this.filteredProducts.length > 6 && this.hasMoreProducts
+    }
+  },
+  watch: {
+    filteredProducts: {
+      handler(newFiltered) {
+        this.displayedProducts = newFiltered.slice(0, this.displayCount)
+      },
+      immediate: true
     }
   },
   methods: {
@@ -165,7 +251,7 @@ export default {
         console.log('📥 Loading featured products...')
 
         const response = await productService.getAllProducts({
-          per_page: 'all', // Get all products
+          per_page: 'all',
           sort_by: 'created_at',
           sort_order: 'desc'
         })
@@ -174,8 +260,8 @@ export default {
 
         if (response.success) {
           this.allProducts = response.data
-          // Initially show first 9 products
-          this.products = this.allProducts.slice(0, this.displayCount)
+          this.extractCategories()
+          this.displayedProducts = this.filteredProducts.slice(0, this.displayCount)
         }
 
         this.isLoading = false
@@ -185,16 +271,43 @@ export default {
       }
     },
 
+    extractCategories() {
+      const uniqueCategories = [...new Set(this.allProducts.map(p => p.category))]
+      this.categories = uniqueCategories.filter(c => c).sort()
+    },
+
+    handleSearch() {
+      this.displayCount = 9
+    },
+
+    clearSearch() {
+      this.searchQuery = ''
+      this.displayCount = 9
+    },
+
+    filterByCategory(category) {
+      this.selectedCategory = category
+      this.displayCount = 9
+      this.$nextTick(() => {
+        this.scrollToProducts()
+      })
+    },
+
+    resetFilters() {
+      this.searchQuery = ''
+      this.selectedCategory = 'all'
+      this.displayCount = 9
+    },
+
     loadMoreProducts() {
-      const currentLength = this.products.length
-      const newLength = currentLength + this.loadMoreCount
-      this.products = this.allProducts.slice(0, newLength)
+      this.displayCount += this.loadMoreCount
+      this.displayedProducts = this.filteredProducts.slice(0, this.displayCount)
       
-      // Smooth scroll to the newly loaded products
       this.$nextTick(() => {
         const newProducts = document.querySelectorAll('.product-card')
-        if (newProducts[currentLength]) {
-          newProducts[currentLength].scrollIntoView({ 
+        const scrollIndex = this.displayCount - this.loadMoreCount
+        if (newProducts[scrollIndex]) {
+          newProducts[scrollIndex].scrollIntoView({ 
             behavior: 'smooth', 
             block: 'center' 
           })
@@ -235,7 +348,7 @@ export default {
     },
 
     scrollToProducts() {
-      this.$refs.productsSection.scrollIntoView({ behavior: 'smooth' })
+      this.$refs.productsSection?.scrollIntoView({ behavior: 'smooth' })
     }
   },
   mounted() {
@@ -318,9 +431,111 @@ export default {
 .section-title {
   text-align: center;
   font-size: 2.5rem;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
   color: #2c3e50;
   font-weight: bold;
+}
+
+/* Filters Container */
+.filters-container {
+  margin-bottom: 2rem;
+}
+
+/* Search Box */
+.search-box {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto 1.5rem;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 1.1rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 1rem 3.5rem 1rem 3.5rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 50px;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #f0f0f0;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.btn-clear-search:hover {
+  background: #e0e0e0;
+}
+
+/* Category Filter */
+.category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.category-btn {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #666;
+}
+
+.category-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateY(-2px);
+}
+
+.category-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+/* Results Info */
+.results-info {
+  text-align: center;
+  color: #666;
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.results-info strong {
+  color: #667eea;
+  font-weight: 600;
 }
 
 /* Loading State */
@@ -365,7 +580,7 @@ export default {
 }
 
 .empty-state p {
-  margin: 0;
+  margin: 0 0 1.5rem 0;
   color: #666;
 }
 
@@ -617,6 +832,16 @@ export default {
 
   .product-image-wrapper {
     height: 250px;
+  }
+
+  .search-input {
+    font-size: 0.95rem;
+    padding: 0.875rem 3rem 0.875rem 3rem;
+  }
+
+  .category-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9rem;
   }
 }
 </style>
