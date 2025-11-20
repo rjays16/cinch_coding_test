@@ -78,12 +78,13 @@
             <p>Check back later for new products</p>
           </div>
 
-          <!-- View All Button -->
-          <div v-if="products.length > 0" class="view-all-container">
-            <router-link to="/products" class="btn-view-all">
-              View All Products
-              <i class="fas fa-arrow-right"></i>
-            </router-link>
+          <!-- Load More Button -->
+          <div v-if="showLoadMore" class="view-all-container">
+            <button @click="loadMoreProducts" class="btn-load-more">
+              <i class="fas fa-sync-alt"></i>
+              Load More Products
+              <span class="products-count">({{ allProducts.length - products.length }} remaining)</span>
+            </button>
           </div>
         </div>
       </section>
@@ -122,7 +123,6 @@
       :show="showQuickView"
       :product="selectedProduct"
       @close="closeQuickView"
-      @view-full="viewFullProduct"
     />
   </Layout>
 </template>
@@ -141,9 +141,20 @@ export default {
   data() {
     return {
       products: [],
+      allProducts: [], // Store all products
       isLoading: false,
       showQuickView: false,
-      selectedProduct: null
+      selectedProduct: null,
+      displayCount: 9, // Initially show 9 products
+      loadMoreCount: 6  // Load 6 more each time
+    }
+  },
+  computed: {
+    hasMoreProducts() {
+      return this.products.length < this.allProducts.length
+    },
+    showLoadMore() {
+      return this.allProducts.length > 6 && this.hasMoreProducts
     }
   },
   methods: {
@@ -151,24 +162,44 @@ export default {
       this.isLoading = true
 
       try {
+        console.log('📥 Loading featured products...')
+
         const response = await productService.getAllProducts({
-          per_page: 9, // Show 9 products on home page
+          per_page: 'all', // Get all products
           sort_by: 'created_at',
           sort_order: 'desc'
         })
+        
+        console.log('✅ Products loaded:', response)
 
         if (response.success) {
-          if (response.data.data) {
-            this.products = response.data.data
-          } else {
-            this.products = response.data.slice(0, 9)
-          }
+          this.allProducts = response.data
+          // Initially show first 9 products
+          this.products = this.allProducts.slice(0, this.displayCount)
         }
 
         this.isLoading = false
       } catch (error) {
+        console.error('❌ Error loading products:', error)
         this.isLoading = false
       }
+    },
+
+    loadMoreProducts() {
+      const currentLength = this.products.length
+      const newLength = currentLength + this.loadMoreCount
+      this.products = this.allProducts.slice(0, newLength)
+      
+      // Smooth scroll to the newly loaded products
+      this.$nextTick(() => {
+        const newProducts = document.querySelectorAll('.product-card')
+        if (newProducts[currentLength]) {
+          newProducts[currentLength].scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          })
+        }
+      })
     },
 
     getProductImage(product) {
@@ -199,11 +230,6 @@ export default {
       this.showQuickView = false
     },
 
-    viewFullProduct(productId) {
-      this.closeQuickView()
-      this.$router.push(`/products/${productId}`)
-    },
-
     viewProductDetail(product) {
       this.$router.push(`/products/${product.id}`)
     },
@@ -213,6 +239,7 @@ export default {
     }
   },
   mounted() {
+    console.log('✅ Home page mounted')
     this.loadProducts()
   }
 }
@@ -229,7 +256,9 @@ export default {
 .hero {
   position: relative;
   height: 500px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-image: url('@/assets/images/photo-overlay.jpg');
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -243,7 +272,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .hero-content {
@@ -498,29 +527,36 @@ export default {
   color: #667eea;
 }
 
-/* View All Button */
+/* Load More Container */
 .view-all-container {
   text-align: center;
   margin-top: 3rem;
 }
 
-.btn-view-all {
+.btn-load-more {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #42b983 0%, #38a169 100%);
   color: white;
   border-radius: 8px;
-  text-decoration: none;
   font-weight: 600;
   font-size: 1.1rem;
   transition: all 0.3s;
+  border: none;
+  cursor: pointer;
 }
 
-.btn-view-all:hover {
+.btn-load-more:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 20px rgba(66, 185, 131, 0.3);
+}
+
+.products-count {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 500;
 }
 
 /* Features Section */

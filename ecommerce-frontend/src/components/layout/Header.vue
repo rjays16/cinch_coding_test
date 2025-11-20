@@ -1,53 +1,82 @@
 <template>
   <header class="header">
-    <div class="container">
-      <div class="header-content">
-        <div class="logo">
-          <router-link to="/">E-Commerce</router-link>
+    <div class="header-container">
+      <!-- Logo (Text Only) -->
+      <router-link to="/" class="logo">
+        E-Commerce
+      </router-link>
+
+      <!-- Navigation -->
+      <nav class="nav-menu">
+        <router-link to="/" class="nav-link">Home</router-link>
+        <router-link to="/products" class="nav-link">Products</router-link>
+        <router-link to="/about" class="nav-link">About</router-link>
+        <router-link to="/contact" class="nav-link">Contact</router-link>
+      </nav>
+
+      <!-- Actions -->
+      <div class="header-actions">
+        <!-- Be A Seller Link -->
+        <a href="http://localhost:5173" target="_blank" class="btn-seller">
+          <i class="fas fa-store"></i>
+          <span>Be A Seller</span>
+        </a>
+
+        <!-- Cart Icon (Only show when logged in) -->
+        <button v-if="isAuthenticated" @click="goToCart" class="btn-cart">
+          <i class="fas fa-shopping-cart"></i>
+          <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
+        </button>
+
+        <!-- User Menu (When logged in) -->
+        <div v-if="isAuthenticated" class="user-menu">
+          <button @click="toggleDropdown" class="btn-user">
+            <i class="fas fa-user-circle"></i>
+            <span>{{ userName }}</span>
+          </button>
+          
+          <div v-if="showDropdown" class="dropdown-menu">
+            <router-link to="/profile" class="dropdown-item" @click="showDropdown = false">
+              <i class="fas fa-user"></i>
+              Profile
+            </router-link>
+            <router-link to="/orders" class="dropdown-item" @click="showDropdown = false">
+              <i class="fas fa-shopping-bag"></i>
+              My Orders
+            </router-link>
+            <button @click="handleLogoutClick" class="dropdown-item">
+              <i class="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </div>
         </div>
 
-        <nav class="nav-links">
-          <router-link to="/">Home</router-link>
-          <a :href="sellerPortalUrl" target="_blank" class="seller-link">Be A Seller</a>
-          <router-link to="/about">About</router-link>
-          <router-link to="/contact">Contact</router-link>
-        </nav>
-
-        <div class="header-actions">
-          <!-- Show if NOT logged in -->
-          <template v-if="!isAuthenticated">
-            <router-link to="/login" class="btn-login">Login</router-link>
-            <router-link to="/register" class="btn-register">Register</router-link>
-          </template>
-
-          <!-- Show if logged in -->
-          <template v-else>
-            <router-link to="/cart" class="cart-icon">
-              🛒
-              <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
-            </router-link>
-            <div class="user-menu">
-              <span class="user-name">{{ userName }}</span>
-              <button @click="showLogoutModal = true" class="btn-logout">Logout</button>
-            </div>
-          </template>
+        <!-- Login & Sign Up Buttons (When not logged in) -->
+        <div v-else class="auth-buttons">
+          <router-link to="/login" class="btn-login">
+            Login
+          </router-link>
+          <router-link to="/register" class="btn-signup">
+            Sign Up
+          </router-link>
         </div>
       </div>
     </div>
 
     <!-- Logout Confirmation Modal -->
-    <LogoutModal 
-      :show="showLogoutModal"
-      :isLoggingOut="isLoggingOut"
-      @close="showLogoutModal = false"
-      @confirm="handleLogout"
+    <LogoutModal
+      :show="showLogoutConfirm"
+      :isLoading="isLoggingOut"
+      @confirm="confirmLogout"
+      @cancel="cancelLogout"
     />
   </header>
 </template>
 
 <script>
 import { authService } from '@/services/authService'
-import LogoutModal from '@/components/LogoutModal.vue'
+import { useCart } from '@/composables/useCart'
+import LogoutModal from '@/components/modals/LogoutModal.vue'
 
 export default {
   name: 'Header',
@@ -56,16 +85,21 @@ export default {
   },
   data() {
     return {
+      showDropdown: false,
       isAuthenticated: false,
       userName: '',
-      cartCount: 0,
-      showLogoutModal: false,
-      isLoggingOut: false,
-      sellerPortalUrl: process.env.VUE_APP_SELLER_PORTAL_URL || 'http://localhost:5173'
+      showLogoutConfirm: false,
+      isLoggingOut: false
     }
   },
-  mounted() {
-    this.checkAuth()
+  setup() {
+    const { cartCount, loadCart, clearCart } = useCart()
+    
+    return {
+      cartCount,
+      loadCart,
+      clearCart
+    }
   },
   methods: {
     checkAuth() {
@@ -73,34 +107,103 @@ export default {
       if (this.isAuthenticated) {
         const user = authService.getUser()
         this.userName = user?.name || 'User'
-        // TODO: Get cart count from API or store
-        this.cartCount = 0
+        this.loadCart()
+      } else {
+        this.userName = ''
+        this.clearCart()
       }
     },
-
-    async handleLogout() {
-      this.isLoggingOut = true
+    
+    toggleDropdown() {
+      this.showDropdown = !this.showDropdown
+    },
+    
+    // STEP 1: When user clicks "Logout" in dropdown
+    handleLogoutClick() {
+      console.log('🔔 Logout clicked - showing modal')
+      this.showLogoutConfirm = true  // Show the modal
+      this.showDropdown = false       // Close dropdown
+    },
+    
+    // STEP 2: When user clicks "Cancel" in modal
+    cancelLogout() {
+      console.log('❌ Logout cancelled')
+      this.showLogoutConfirm = false
+    },
+    
+    // STEP 3: When user clicks "Confirm Logout" in modal
+    async confirmLogout() {
+      if (this.isLoggingOut) return
 
       try {
+        this.isLoggingOut = true
+        console.log('🔓 Logging out...')
+        
+        // Small delay to show loading state
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Call logout service
         await authService.logout()
-        authService.clearAuth()
-        this.isAuthenticated = false
-        this.showLogoutModal = false
+        
+        // Clear cart
+        this.clearCart()
+        
+        // Update header state
+        this.checkAuth()
+        
+        console.log('✅ Logout complete')
+        
+        // Close modal
+        this.showLogoutConfirm = false
         this.isLoggingOut = false
+        
+        // Redirect to login
         this.$router.push('/login')
       } catch (error) {
-        console.error('Logout error:', error)
-        // Force logout even if API fails
-        authService.clearAuth()
-        this.isAuthenticated = false
-        this.showLogoutModal = false
+        console.error('❌ Logout error:', error)
         this.isLoggingOut = false
+        this.showLogoutConfirm = false
+        // Still redirect even if API fails
         this.$router.push('/login')
       }
+    },
+    
+    goToCart() {
+      this.$router.push('/cart')
     }
   },
+  
+  mounted() {
+    console.log('✅ Header mounted')
+    
+    // Check auth on mount
+    this.checkAuth()
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.user-menu')) {
+        this.showDropdown = false
+      }
+    })
+
+    // Listen for storage changes (login/logout from another tab)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'buyer_token' || e.key === 'buyer_user' || e.key === null) {
+        console.log('🔄 Storage changed, updating auth state')
+        this.checkAuth()
+      }
+    })
+
+    // Listen for custom auth events
+    window.addEventListener('auth-changed', () => {
+      console.log('🔄 Auth changed event received')
+      this.checkAuth()
+    })
+  },
+  
   watch: {
     '$route'() {
+      // Check auth on route change
       this.checkAuth()
     }
   }
@@ -109,153 +212,394 @@ export default {
 
 <style scoped>
 .header {
-  background-color: #2c3e50;
-  color: white;
-  padding: 1rem 0;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
-.container {
-  max-width: 1200px;
+.header-container {
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.header-content {
+  padding: 1rem 2rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.logo a {
-  color: white;
-  text-decoration: none;
-  font-size: 1.8rem;
-  font-weight: bold;
-}
-
-.nav-links {
-  display: flex;
   gap: 2rem;
 }
 
-.nav-links a {
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+  transition: opacity 0.3s;
+  flex-shrink: 0;
+  width: 180px;
+}
+
+.logo:hover {
+  opacity: 0.9;
+}
+
+.nav-menu {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+.nav-link {
   color: white;
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.3s;
-}
-
-.nav-links a:hover,
-.nav-links a.router-link-active {
-  color: #42b983;
-}
-
-.seller-link {
-  color: #42b983 !important;
-  font-weight: bold !important;
+  transition: opacity 0.3s;
+  padding: 0.5rem 0;
   position: relative;
+  white-space: nowrap;
 }
 
-.seller-link:hover {
-  color: #5dcea4 !important;
-  transform: translateY(-2px);
+.nav-link:hover {
+  opacity: 0.8;
+}
+
+.nav-link.router-link-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: white;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  width: 180px;
+  justify-content: flex-end;
 }
 
-.btn-login {
+/* Be A Seller Button */
+.btn-seller {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
   color: white;
-  background-color: transparent;
-  border: 1px solid white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 4px;
   text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
   transition: all 0.3s;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
 }
 
-.btn-login:hover {
-  background-color: white;
-  color: #2c3e50;
+.btn-seller:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
-.btn-register {
-  background-color: #42b983;
-  color: white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 4px;
-  text-decoration: none;
-  transition: all 0.3s;
+.btn-seller i {
+  font-size: 0.875rem;
 }
 
-.btn-register:hover {
-  background-color: #359268;
-}
-
-.cart-icon {
+/* Cart Button */
+.btn-cart {
   position: relative;
-  font-size: 1.5rem;
-  text-decoration: none;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 1.25rem;
   color: white;
-  transition: transform 0.3s;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background 0.3s;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.cart-icon:hover {
-  transform: scale(1.1);
+.btn-cart:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .cart-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background-color: #ff4444;
+  top: -5px;
+  right: -5px;
+  background: #e74c3c;
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 50%;
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
   min-width: 18px;
   text-align: center;
+  line-height: 1;
 }
 
+/* User Menu */
 .user-menu {
+  position: relative;
+}
+
+.btn-user {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.user-name {
+  gap: 0.5rem;
   color: white;
-  font-weight: 500;
-}
-
-.btn-logout {
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 4px;
+  font-size: 0.875rem;
   cursor: pointer;
-  font-weight: 500;
+  padding: 0.5rem 0.875rem;
+  border-radius: 6px;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.btn-user:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.btn-user i {
+  font-size: 1.1rem;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #2c3e50;
+  text-decoration: none;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.3s;
+  font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa;
+}
+
+.dropdown-item i {
+  font-size: 0.95rem;
+  width: 16px;
+}
+
+/* Auth Buttons */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.btn-login,
+.btn-signup {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
   transition: all 0.3s;
+  display: inline-block;
+  white-space: nowrap;
 }
 
-.btn-logout:hover {
-  background-color: #cc0000;
+.btn-login {
+  color: white;
+  background: transparent;
+  border: 2px solid white;
 }
 
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
+.btn-login:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-signup {
+  background: white;
+  color: #667eea;
+  border: 2px solid white;
+}
+
+.btn-signup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .logo {
+    width: 150px;
+  }
+
+  .header-actions {
+    width: 150px;
+  }
+
+  .nav-menu {
+    gap: 1.5rem;
+  }
+
+  .nav-link {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 968px) {
+  .header-container {
+    flex-wrap: wrap;
+    padding: 1rem;
     gap: 1rem;
   }
 
-  .nav-links {
+  .logo {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .nav-menu {
+    flex: 1;
+    gap: 1.25rem;
+    justify-content: center;
+  }
+
+  .header-actions {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+  }
+
+  .nav-link {
+    font-size: 0.85rem;
+  }
+
+  .btn-seller {
+    padding: 0.45rem 0.875rem;
+    font-size: 0.8rem;
+  }
+
+  .btn-login,
+  .btn-signup {
+    padding: 0.45rem 0.875rem;
+    font-size: 0.8rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .logo {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nav-menu {
+    order: 3;
+    width: 100%;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
     gap: 1rem;
+  }
+
+  .nav-link {
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-seller {
+    font-size: 0.75rem;
+    padding: 0.45rem 0.75rem;
+  }
+
+  .btn-login,
+  .btn-signup {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.875rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .header-container {
+    padding: 0.75rem;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+  }
+
+  .nav-menu {
+    gap: 0.75rem;
+  }
+
+  .nav-link {
+    font-size: 0.8rem;
+  }
+
+  .btn-seller span {
+    display: none;
+  }
+
+  .btn-seller {
+    padding: 0.5rem;
+    width: 38px;
+    height: 38px;
+    justify-content: center;
+  }
+
+  .btn-login,
+  .btn-signup {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.75rem;
+  }
+
+  .auth-buttons {
+    gap: 0.5rem;
+  }
+
+  .btn-user {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.75rem;
   }
 }
 </style>

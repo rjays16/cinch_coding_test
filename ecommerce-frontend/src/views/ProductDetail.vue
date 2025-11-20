@@ -14,9 +14,9 @@
         <i class="fas fa-exclamation-circle"></i>
         <h2>Product Not Found</h2>
         <p>{{ errorMessage }}</p>
-        <router-link to="/" class="btn-back-to-products">
-            <i class="fas fa-arrow-left"></i>
-            Back to Home
+        <router-link to="/" class="btn-back">
+          <i class="fas fa-arrow-left"></i>
+          Back to Home
         </router-link>
       </div>
 
@@ -30,6 +30,8 @@
 
         <div class="product-info">
           <div class="breadcrumb">
+            <router-link to="/">Home</router-link>
+            <i class="fas fa-chevron-right"></i>
             <router-link to="/products">Products</router-link>
             <i class="fas fa-chevron-right"></i>
             <span>{{ product.category }}</span>
@@ -59,6 +61,14 @@
           <div class="stock-info" :class="getStockClass(product.stock)">
             <i :class="getStockIcon(product.stock)"></i>
             <span>{{ getStockText(product.stock) }}</span>
+          </div>
+
+          <div v-if="product.seller" class="seller-info">
+            <i class="fas fa-store"></i>
+            <div class="seller-details">
+              <strong>{{ product.seller.store_name }}</strong>
+              <span>Verified Seller</span>
+            </div>
           </div>
 
           <div class="product-description">
@@ -98,13 +108,13 @@
           </div>
 
           <div class="action-buttons">
-            <button class="btn-add-cart" :disabled="product.stock === 0">
+            <button class="btn-add-cart" :disabled="product.stock === 0" @click="handleAddToCart">
               <i class="fas fa-shopping-cart"></i>
               {{ product.stock === 0 ? 'Out of Stock' : 'Add to Cart' }}
             </button>
-            <router-link to="/" class="btn-back">
-                <i class="fas fa-arrow-left"></i>
-                Back to Home
+            <router-link to="/" class="btn-back-to-products">
+              <i class="fas fa-arrow-left"></i>
+              Back to Home
             </router-link>
           </div>
         </div>
@@ -115,10 +125,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { productService } from '@/services/productService'
+import { authService } from '@/services/authService'
+import { useCart } from '@/composables/useCart'
 
 const route = useRoute()
+const router = useRouter()
+const { addToCart } = useCart()
 
 // State
 const product = ref(null)
@@ -132,6 +146,7 @@ const loadProduct = async () => {
 
   try {
     const productId = route.params.id
+
     const response = await productService.getProduct(productId)
 
     if (response.success) {
@@ -143,6 +158,47 @@ const loadProduct = async () => {
     errorMessage.value = 'Product not found or unavailable'
     isLoading.value = false
   }
+}
+
+const handleAddToCart = () => {
+  // Check if user is logged in
+  if (!authService.isAuthenticated()) {
+    // Redirect to login
+    router.push('/login')
+    return
+  }
+
+  // Check stock
+  if (product.value.stock === 0) {
+    alert('This product is out of stock')
+    return
+  }
+
+  // Add to cart
+  const success = addToCart(product.value, 1)
+  
+  if (success) {
+    showSuccessMessage()
+  }
+}
+
+const showSuccessMessage = () => {
+  // Create temporary notification
+  const notification = document.createElement('div')
+  notification.className = 'cart-notification'
+  notification.innerHTML = `
+    <i class="fas fa-check-circle"></i>
+    <span>Added to cart!</span>
+  `
+  document.body.appendChild(notification)
+
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.classList.add('fade-out')
+    setTimeout(() => {
+      document.body.removeChild(notification)
+    }, 300)
+  }, 3000)
 }
 
 const getProductImage = (product) => {
@@ -389,6 +445,36 @@ onMounted(() => {
   color: #721c24;
 }
 
+.seller-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.seller-info i {
+  font-size: 2rem;
+  color: #667eea;
+}
+
+.seller-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.seller-details strong {
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.seller-details span {
+  color: #666;
+  font-size: 0.9rem;
+}
+
 .product-description h3,
 .product-sizes h3,
 .product-details h3 {
@@ -485,6 +571,50 @@ onMounted(() => {
 .btn-back-to-products:hover {
   background: #667eea;
   color: white;
+}
+
+/* Success Notification */
+:global(.cart-notification) {
+  position: fixed;
+  top: 100px;
+  right: 2rem;
+  background: #28a745;
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  z-index: 10000;
+  animation: slideIn 0.3s ease;
+}
+
+:global(.cart-notification.fade-out) {
+  animation: slideOut 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
 }
 
 /* Responsive */

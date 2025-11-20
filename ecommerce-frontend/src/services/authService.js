@@ -31,8 +31,21 @@ export const authService = {
 
   // Logout buyer
   async logout() {
-    const response = await api.post('/buyer/logout')
-    return response.data
+    try {
+      await api.post('/buyer/logout')
+    } catch (error) {
+      console.log('Logout API call failed, but clearing local data anyway')
+    }
+    
+    // Clear all authentication data
+    localStorage.removeItem('buyer_token')
+    localStorage.removeItem('buyer_user')
+    localStorage.removeItem('cart') // Clear cart too
+    
+    // Dispatch storage event to update other components
+    window.dispatchEvent(new Event('storage'))
+    
+    console.log('✅ Logged out successfully')
   },
 
   // Get current user
@@ -58,5 +71,9 @@ export const authService = {
   clearAuth() {
     localStorage.removeItem('buyer_token')
     localStorage.removeItem('buyer_user')
+    localStorage.removeItem('cart')
+    
+    // Dispatch storage event
+    window.dispatchEvent(new Event('storage'))
   }
 }

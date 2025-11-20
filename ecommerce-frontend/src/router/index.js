@@ -6,6 +6,7 @@ import ForgotPassword from '../views/ForgotPassword.vue'
 import ResetPassword from '../views/ResetPassword.vue'
 import { authService } from '../services/authService'
 import Products from '../views/Products.vue'
+import Cart from '../views/Cart.vue'
 
 const routes = [
   {
@@ -46,6 +47,12 @@ const routes = [
     path: '/products/:id',
     name: 'ProductDetail',
     component: () => import('../views/ProductDetail.vue')
+  },
+  {
+    path: '/cart',
+    name: 'Cart',
+    component: Cart,
+    meta: { requiresAuth: true }
   }
 ]
 

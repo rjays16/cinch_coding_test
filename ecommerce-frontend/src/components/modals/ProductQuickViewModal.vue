@@ -73,6 +73,9 @@
 </template>
 
 <script>
+import { authService } from '@/services/authService'
+import { useCart } from '@/composables/useCart'
+
 export default {
   name: 'ProductQuickViewModal',
   props: {
@@ -85,18 +88,61 @@ export default {
       default: null
     }
   },
+  setup() {
+    const { addToCart } = useCart()
+    return { addToCart }
+  },
   methods: {
     handleClose() {
       this.$emit('close')
     },
 
-    handleViewFull() {
-      this.$emit('view-full', this.product.id)
+    handleAddToCart() {
+      // Check if user is logged in
+      if (!authService.isAuthenticated()) {
+        // Redirect to login
+        this.$emit('close')
+        this.$router.push('/login')
+        return
+      }
+
+      // Check stock
+      if (this.product.stock === 0) {
+        alert('This product is out of stock')
+        return
+      }
+
+      // Add to cart
+      const success = this.addToCart(this.product, 1)
+      
+      if (success) {
+        // Show success notification
+        this.showSuccessMessage()
+        
+        // Optional: Close modal after adding (uncomment if you want)
+        // setTimeout(() => {
+        //   this.$emit('close')
+        // }, 1000)
+      }
     },
 
-    handleAddToCart() {
-      // For now, just show alert (you can integrate with cart later)
-      alert(`"${this.product.name}" will be added to cart!\n(Cart functionality coming soon)`)
+    showSuccessMessage() {
+      // Create temporary notification
+      const notification = document.createElement('div')
+      notification.className = 'cart-notification'
+      notification.innerHTML = `
+        <i class="fas fa-check-circle"></i>
+        <span>Added to cart!</span>
+      `
+      document.body.appendChild(notification)
+
+      // Remove after 3 seconds
+      setTimeout(() => {
+        notification.classList.add('fade-out')
+        setTimeout(() => {
+          document.body.removeChild(notification)
+        }, 300)
+      }, 3000)
     },
 
     getProductImage(product) {
@@ -394,27 +440,6 @@ export default {
   color: #667eea;
 }
 
-.view-full-link {
-  text-align: center;
-  padding-top: 0.5rem;
-}
-
-.link-view-full {
-  color: #667eea;
-  text-decoration: none;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.link-view-full:hover {
-  color: #5568d3;
-  text-decoration: underline;
-}
-
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.3s;
@@ -423,6 +448,50 @@ export default {
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+/* Success Notification */
+:global(.cart-notification) {
+  position: fixed;
+  top: 100px;
+  right: 2rem;
+  background: #28a745;
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  z-index: 10000;
+  animation: slideIn 0.3s ease;
+}
+
+:global(.cart-notification.fade-out) {
+  animation: slideOut 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
 }
 
 @media (max-width: 968px) {
