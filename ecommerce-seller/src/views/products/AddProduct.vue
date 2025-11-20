@@ -526,7 +526,7 @@ const handleSubmit = async () => {
     showSuccessModal.value = true
     
   } catch (error) {
-    console.error('❌ Error creating product:', error)
+    console.error('Error creating product:', error)
     
     if (error.errors) {
       // Laravel validation errors

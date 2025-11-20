@@ -142,7 +142,7 @@ export default {
         // Show success notification
         this.showSuccessMessage()
       } catch (error) {
-        console.error('❌ Error adding to cart:', error)
+        console.error('Error adding to cart:', error)
         alert(error.response?.data?.message || 'Failed to add to cart')
       } finally {
         this.isAddingToCart = false

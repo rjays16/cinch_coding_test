@@ -1,7 +1,13 @@
 <template>
   <div class="checkout-page">
     <div class="container">
-      <h1 class="page-title">Checkout</h1>
+      <div class="page-header">
+        <button @click="goBack" class="btn-back">
+          <i class="fas fa-arrow-left"></i>
+          Back to Cart
+        </button>
+        <h1 class="page-title">Checkout</h1>
+      </div>
 
       <!-- Loading State -->
       <div v-if="isLoading" class="loading-state">
@@ -274,6 +280,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { authService } from '@/services/authService'
+import { orderService } from '@/services/orderService'
 import OrderSuccessModal from '@/components/modals/OrderSuccessModal.vue'
 
 export default {
@@ -397,30 +404,36 @@ export default {
       isProcessing.value = true
 
       try {
-        // Simulate order processing
-        await new Promise(resolve => setTimeout(resolve, 2000))
-
-        // Generate order number
-        orderNumber.value = 'ORD-' + Date.now()
-
-        // TODO: Send order to backend API
-        console.log('Order Data:', {
+        // Prepare order data
+        const orderData = {
           shipping: shippingInfo.value,
-          payment: paymentMethod.value,
-          notes: orderNotes.value,
-          items: cartItems.value,
-          total: cartTotal.value
-        })
+          payment_method: paymentMethod.value,
+          order_notes: orderNotes.value
+        }
 
-        // Clear cart
-        await clearCart()
+        // Call backend API
+        const response = await orderService.createOrder(orderData)
 
-        // Show success modal
-        showSuccessModal.value = true
+        if (response.success) {
+          orderNumber.value = response.data.order.order_number
+
+          // Check if Stripe payment is required
+          if (response.data.requires_payment && response.data.stripe_url) {
+            
+            // Redirect to Stripe checkout page
+            window.location.href = response.data.stripe_url
+            return
+          }
+
+          // For COD and PayPal - show success modal
+          await clearCart()
+          showSuccessModal.value = true
+        }
 
       } catch (error) {
         console.error('Order error:', error)
-        alert('Failed to place order. Please try again.')
+        const errorMessage = error.response?.data?.message || 'Failed to place order. Please try again.'
+        alert(errorMessage)
       } finally {
         isProcessing.value = false
       }
@@ -438,6 +451,10 @@ export default {
       }).format(price)
     }
 
+    const goBack = () => {
+      router.push('/cart')
+    }
+
     return {
       isLoading,
       isProcessing,
@@ -453,7 +470,8 @@ export default {
       selectPaymentMethod,
       placeOrder,
       handleSuccessClose,
-      formatPrice
+      formatPrice,
+      goBack
     }
   }
 }
@@ -472,10 +490,44 @@ export default {
   padding: 0 2rem;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.btn-back {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.95rem;
+}
+
+.btn-back:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8f9ff;
+  transform: translateX(-4px);
+}
+
+.btn-back i {
+  font-size: 1rem;
+}
+
 .page-title {
   font-size: 2rem;
   color: #2c3e50;
-  margin-bottom: 2rem;
+  margin: 0;
+  flex: 1;
 }
 
 /* Loading State */
@@ -863,8 +915,21 @@ export default {
     padding: 0 1rem;
   }
 
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .btn-back {
+    width: 100%;
+    justify-content: center;
+  }
+
   .page-title {
     font-size: 1.5rem;
+    width: 100%;
+    text-align: center;
   }
 
   .checkout-section {

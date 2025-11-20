@@ -220,7 +220,7 @@ const loadProducts = async () => {
 
     isLoading.value = false
   } catch (error) {
-    console.error('❌ Error loading products:', error)
+    console.error('Error loading products:', error)
     errorMessage.value = error.message || 'Failed to load products'
     isLoading.value = false
   }
@@ -234,7 +234,7 @@ const loadCategories = async () => {
       categories.value = uniqueCategories.sort()
     }
   } catch (error) {
-    console.error('❌ Error loading categories:', error)
+    console.error('Error loading categories:', error)
   }
 }
 

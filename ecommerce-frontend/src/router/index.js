@@ -9,6 +9,8 @@ import Products from '../views/Products.vue'
 import Cart from '../views/Cart.vue'
 import Checkout from '../views/Checkout.vue'
 import ProductDetail from '../views/ProductDetail.vue'
+import CheckoutSuccess from '../views/CheckoutSuccess.vue'
+import CheckoutCancel from '../views/CheckoutCancel.vue'
 const routes = [
   {
     path: '/',
@@ -60,7 +62,17 @@ const routes = [
   name: 'Checkout',
   component: Checkout,
   meta: { requiresAuth: true }
-  }
+  },
+  {
+  path: '/checkout/success',
+  name: 'CheckoutSuccess',
+  component: CheckoutSuccess
+},
+{
+  path: '/checkout/cancel',
+  name: 'CheckoutCancel',
+  component: CheckoutCancel
+}
 ]
 
 const router = createRouter({

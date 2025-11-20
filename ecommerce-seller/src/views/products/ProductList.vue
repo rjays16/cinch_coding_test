@@ -366,7 +366,7 @@ const loadProducts = async () => {
 
     isLoading.value = false
   } catch (error) {
-    console.error('❌ Error loading products:', error)
+    console.error('Error loading products:', error)
     errorMessage.value = error.message || 'Failed to load products'
     isLoading.value = false
   }
@@ -453,7 +453,7 @@ const deleteProduct = async () => {
     // Reload products
     loadProducts()
   } catch (error) {
-    console.error('❌ Error deleting product:', error)
+    console.error('Error deleting product:', error)
     errorMessage.value = error.message || 'Failed to delete product'
     isDeleting.value = false
     showDeleteModal.value = false
