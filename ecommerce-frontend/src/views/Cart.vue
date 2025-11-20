@@ -66,7 +66,7 @@
             </div>
 
             <button
-              @click="removeItem(item)"
+              @click="showRemoveModal(item)"
               class="btn-remove"
               :disabled="isLoading"
             >
@@ -107,15 +107,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Remove Item Confirmation Modal -->
+    <RemoveCartItemModal
+      :show="showRemoveConfirm"
+      :itemName="itemToRemove?.product?.name"
+      :isLoading="isRemoving"
+      @confirm="confirmRemove"
+      @cancel="cancelRemove"
+    />
   </div>
 </template>
 
 <script>
 import { useCart } from '@/composables/useCart'
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import RemoveCartItemModal from '@/components/modals/RemoveCartItemModal.vue'
 
 export default {
   name: 'Cart',
+  components: {
+    RemoveCartItemModal
+  },
   setup() {
     const {
       cartItems,
@@ -126,6 +139,10 @@ export default {
       updateQuantity,
       removeFromCart
     } = useCart()
+
+    const showRemoveConfirm = ref(false)
+    const itemToRemove = ref(null)
+    const isRemoving = ref(false)
 
     onMounted(() => {
       loadCart()
@@ -147,13 +164,30 @@ export default {
       }
     }
 
-    const removeItem = async (item) => {
-      if (confirm(`Remove ${item.product.name} from cart?`)) {
-        try {
-          await removeFromCart(item.id)
-        } catch (error) {
-          alert('Failed to remove item')
-        }
+    const showRemoveModal = (item) => {
+      itemToRemove.value = item
+      showRemoveConfirm.value = true
+    }
+
+    const cancelRemove = () => {
+      showRemoveConfirm.value = false
+      itemToRemove.value = null
+    }
+
+    const confirmRemove = async () => {
+      if (!itemToRemove.value) return
+
+      try {
+        isRemoving.value = true
+        await removeFromCart(itemToRemove.value.id)
+        
+        // Success - close modal
+        showRemoveConfirm.value = false
+        itemToRemove.value = null
+      } catch (error) {
+        alert('Failed to remove item')
+      } finally {
+        isRemoving.value = false
       }
     }
 
@@ -164,7 +198,12 @@ export default {
       isLoading,
       increaseQuantity,
       decreaseQuantity,
-      removeItem
+      showRemoveModal,
+      showRemoveConfirm,
+      itemToRemove,
+      isRemoving,
+      confirmRemove,
+      cancelRemove
     }
   }
 }
@@ -391,6 +430,10 @@ export default {
   cursor: pointer;
   margin-top: 1.5rem;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-checkout:hover:not(:disabled) {
@@ -409,6 +452,11 @@ export default {
   color: #667eea;
   margin-top: 1rem;
   text-decoration: none;
+  font-weight: 500;
+}
+
+.btn-continue:hover {
+  text-decoration: underline;
 }
 
 .btn-primary {
