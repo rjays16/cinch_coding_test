@@ -1,107 +1,166 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import api from '@/services/api'
 
 // Cart state (shared across components)
 const cartItems = ref([])
 const cartCount = ref(0)
+const cartTotal = ref(0)
+const isLoading = ref(false)
 
 export function useCart() {
-  // Load cart from localStorage
-  const loadCart = () => {
+  // Load cart from API
+  const loadCart = async () => {
     const token = localStorage.getItem('buyer_token')
     if (!token) {
       cartItems.value = []
       cartCount.value = 0
+      cartTotal.value = 0
       return
     }
 
-    const stored = localStorage.getItem('cart')
-    if (stored) {
-      cartItems.value = JSON.parse(stored)
-      cartCount.value = cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
+    try {
+      isLoading.value = true
+      const response = await api.get('/buyer/cart')
+      
+      if (response.data.success) {
+        cartItems.value = response.data.data.items
+        cartCount.value = response.data.data.count
+        cartTotal.value = response.data.data.total
+      }
+    } catch (error) {
+      console.error('Error loading cart:', error)
+      cartItems.value = []
+      cartCount.value = 0
+      cartTotal.value = 0
+    } finally {
+      isLoading.value = false
     }
-  }
-
-  // Save cart to localStorage
-  const saveCart = () => {
-    localStorage.setItem('cart', JSON.stringify(cartItems.value))
-    cartCount.value = cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
   }
 
   // Add item to cart
-  const addToCart = (product, quantity = 1) => {
-    const existingItem = cartItems.value.find(item => item.id === product.id)
-
-    if (existingItem) {
-      // Increase quantity if already in cart
-      existingItem.quantity += quantity
-    } else {
-      // Add new item to cart
-      cartItems.value.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image_url || product.image,
-        seller: product.seller,
-        category: product.category,
-        stock: product.stock,
-        quantity: quantity
-      })
+  const addToCart = async (product, quantity = 1) => {
+    const token = localStorage.getItem('buyer_token')
+    if (!token) {
+      throw new Error('Please login to add items to cart')
     }
 
-    saveCart()
-    return true
+    try {
+      isLoading.value = true
+      const response = await api.post('/buyer/cart', {
+        product_id: product.id,
+        quantity: quantity
+      })
+
+      if (response.data.success) {
+        
+        // Reload cart to get updated data
+        await loadCart()
+        
+        // Emit event to notify other components
+        window.dispatchEvent(new Event('cart-updated'))
+        
+        return true
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      throw error
+    } finally {
+      isLoading.value = false
+    }
   }
 
   // Remove item from cart
-  const removeFromCart = (productId) => {
-    cartItems.value = cartItems.value.filter(item => item.id !== productId)
-    saveCart()
+  const removeFromCart = async (cartItemId) => {
+    try {
+      isLoading.value = true
+      const response = await api.delete(`/buyer/cart/${cartItemId}`)
+
+      if (response.data.success) {
+        await loadCart()
+        window.dispatchEvent(new Event('cart-updated'))
+        return true
+      }
+    } catch (error) {
+      console.error('Error removing from cart:', error)
+      throw error
+    } finally {
+      isLoading.value = false
+    }
   }
 
   // Update item quantity
-  const updateQuantity = (productId, quantity) => {
-    const item = cartItems.value.find(item => item.id === productId)
-    if (item) {
-      item.quantity = quantity
-      if (quantity <= 0) {
-        removeFromCart(productId)
-      } else {
-        saveCart()
+  const updateQuantity = async (cartItemId, quantity) => {
+    if (quantity <= 0) {
+      return await removeFromCart(cartItemId)
+    }
+
+    try {
+      isLoading.value = true
+      const response = await api.put(`/buyer/cart/${cartItemId}`, {
+        quantity: quantity
+      })
+
+      if (response.data.success) {
+        await loadCart()
+        window.dispatchEvent(new Event('cart-updated'))
+        return true
       }
+    } catch (error) {
+      console.error('Error updating quantity:', error)
+      throw error
+    } finally {
+      isLoading.value = false
     }
   }
 
   // Clear cart
-  const clearCart = () => {
-    cartItems.value = []
-    cartCount.value = 0
-    localStorage.removeItem('cart')
-  }
+  const clearCart = async () => {
+    const token = localStorage.getItem('buyer_token')
+    if (!token) {
+      cartItems.value = []
+      cartCount.value = 0
+      cartTotal.value = 0
+      return
+    }
 
-  // Get cart total
-  const cartTotal = computed(() => {
-    return cartItems.value.reduce((sum, item) => {
-      return sum + (item.price * item.quantity)
-    }, 0)
-  })
+    try {
+      isLoading.value = true
+      await api.delete('/buyer/cart')
+      cartItems.value = []
+      cartCount.value = 0
+      cartTotal.value = 0
+      window.dispatchEvent(new Event('cart-updated'))
+    } catch (error) {
+      console.error('Error clearing cart:', error)
+      cartItems.value = []
+      cartCount.value = 0
+      cartTotal.value = 0
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   // Check if product is in cart
   const isInCart = (productId) => {
-    return cartItems.value.some(item => item.id === productId)
+    return cartItems.value.some(item => item.product_id === productId)
   }
 
-  // Initialize cart
-  loadCart()
+  // Get cart item by product ID
+  const getCartItem = (productId) => {
+    return cartItems.value.find(item => item.product_id === productId)
+  }
 
   return {
     cartItems,
     cartCount,
     cartTotal,
+    isLoading,
     addToCart,
     removeFromCart,
     updateQuantity,
     clearCart,
     loadCart,
-    isInCart
+    isInCart,
+    getCartItem
   }
 }

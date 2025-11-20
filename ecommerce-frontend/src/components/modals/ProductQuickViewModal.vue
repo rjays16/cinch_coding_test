@@ -3,7 +3,7 @@
     <div v-if="show && product" class="modal-overlay" @click="handleClose">
       <div class="modal-content" @click.stop>
         <!-- Close Button -->
-        <button class="close-button" @click="handleClose">
+        <button class="close-button" @click="handleClose" :disabled="isAddingToCart">
           <i class="fas fa-times"></i>
         </button>
 
@@ -54,13 +54,23 @@
             <div class="action-buttons">
               <button 
                 class="btn-add-cart" 
-                :disabled="product.stock === 0"
+                :disabled="product.stock === 0 || isAddingToCart"
                 @click="handleAddToCart"
               >
-                <i class="fas fa-shopping-cart"></i>
-                {{ product.stock === 0 ? 'Out of Stock' : 'Add to Cart' }}
+                <template v-if="isAddingToCart">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  Adding...
+                </template>
+                <template v-else-if="product.stock === 0">
+                  <i class="fas fa-times-circle"></i>
+                  Out of Stock
+                </template>
+                <template v-else>
+                  <i class="fas fa-shopping-cart"></i>
+                  Add to Cart
+                </template>
               </button>
-              <button class="btn-close" @click="handleClose">
+              <button class="btn-close" @click="handleClose" :disabled="isAddingToCart">
                 <i class="fas fa-times"></i>
                 Close
               </button>
@@ -88,19 +98,25 @@ export default {
       default: null
     }
   },
+  data() {
+    return {
+      isAddingToCart: false
+    }
+  },
   setup() {
     const { addToCart } = useCart()
     return { addToCart }
   },
   methods: {
     handleClose() {
-      this.$emit('close')
+      if (!this.isAddingToCart) {
+        this.$emit('close')
+      }
     },
 
-    handleAddToCart() {
+    async handleAddToCart() {
       // Check if user is logged in
       if (!authService.isAuthenticated()) {
-        // Redirect to login
         this.$emit('close')
         this.$router.push('/login')
         return
@@ -112,22 +128,28 @@ export default {
         return
       }
 
-      // Add to cart
-      const success = this.addToCart(this.product, 1)
-      
-      if (success) {
+      // Check if already adding
+      if (this.isAddingToCart) {
+        return
+      }
+
+      try {
+        this.isAddingToCart = true
+        
+        // Add to cart
+        await this.addToCart(this.product, 1)
+        
         // Show success notification
         this.showSuccessMessage()
-        
-        // Optional: Close modal after adding (uncomment if you want)
-        // setTimeout(() => {
-        //   this.$emit('close')
-        // }, 1000)
+      } catch (error) {
+        console.error('❌ Error adding to cart:', error)
+        alert(error.response?.data?.message || 'Failed to add to cart')
+      } finally {
+        this.isAddingToCart = false
       }
     },
 
     showSuccessMessage() {
-      // Create temporary notification
       const notification = document.createElement('div')
       notification.className = 'cart-notification'
       notification.innerHTML = `
@@ -136,7 +158,6 @@ export default {
       `
       document.body.appendChild(notification)
 
-      // Remove after 3 seconds
       setTimeout(() => {
         notification.classList.add('fade-out')
         setTimeout(() => {
@@ -241,9 +262,14 @@ export default {
   z-index: 10;
 }
 
-.close-button:hover {
+.close-button:hover:not(:disabled) {
   background: #e74c3c;
   color: white;
+}
+
+.close-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modal-body {
@@ -427,6 +453,21 @@ export default {
 .btn-add-cart:disabled {
   background: #ccc;
   cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.btn-add-cart .fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-close {
@@ -435,9 +476,14 @@ export default {
   border: 2px solid #e0e0e0;
 }
 
-.btn-close:hover {
+.btn-close:hover:not(:disabled) {
   border-color: #667eea;
   color: #667eea;
+}
+
+.btn-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modal-fade-enter-active,

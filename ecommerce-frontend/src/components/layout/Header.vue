@@ -102,12 +102,13 @@ export default {
     }
   },
   methods: {
-    checkAuth() {
+    async checkAuth() {
       this.isAuthenticated = authService.isAuthenticated()
       if (this.isAuthenticated) {
         const user = authService.getUser()
         this.userName = user?.name || 'User'
-        this.loadCart()
+        // Load cart when authenticated
+        await this.loadCart()
       } else {
         this.userName = ''
         this.clearCart()
@@ -120,14 +121,12 @@ export default {
     
     // STEP 1: When user clicks "Logout" in dropdown
     handleLogoutClick() {
-      console.log('🔔 Logout clicked - showing modal')
-      this.showLogoutConfirm = true  // Show the modal
-      this.showDropdown = false       // Close dropdown
+      this.showLogoutConfirm = true
+      this.showDropdown = false
     },
     
     // STEP 2: When user clicks "Cancel" in modal
     cancelLogout() {
-      console.log('❌ Logout cancelled')
       this.showLogoutConfirm = false
     },
     
@@ -137,33 +136,22 @@ export default {
 
       try {
         this.isLoggingOut = true
-        console.log('🔓 Logging out...')
         
-        // Small delay to show loading state
         await new Promise(resolve => setTimeout(resolve, 500))
         
-        // Call logout service
         await authService.logout()
         
-        // Clear cart
         this.clearCart()
         
-        // Update header state
         this.checkAuth()
         
-        console.log('✅ Logout complete')
-        
-        // Close modal
         this.showLogoutConfirm = false
         this.isLoggingOut = false
         
-        // Redirect to login
         this.$router.push('/login')
       } catch (error) {
-        console.error('❌ Logout error:', error)
         this.isLoggingOut = false
         this.showLogoutConfirm = false
-        // Still redirect even if API fails
         this.$router.push('/login')
       }
     },
@@ -173,11 +161,10 @@ export default {
     }
   },
   
-  mounted() {
-    console.log('✅ Header mounted')
+  async mounted() {
     
     // Check auth on mount
-    this.checkAuth()
+    await this.checkAuth()
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -186,25 +173,25 @@ export default {
       }
     })
 
-    // Listen for storage changes (login/logout from another tab)
+    // Listen for storage changes
     window.addEventListener('storage', (e) => {
       if (e.key === 'buyer_token' || e.key === 'buyer_user' || e.key === null) {
-        console.log('🔄 Storage changed, updating auth state')
         this.checkAuth()
       }
     })
 
-    // Listen for custom auth events
-    window.addEventListener('auth-changed', () => {
-      console.log('🔄 Auth changed event received')
-      this.checkAuth()
+    // Listen for cart update events
+    window.addEventListener('cart-updated', async () => {
+      await this.loadCart()
     })
   },
   
   watch: {
     '$route'() {
-      // Check auth on route change
       this.checkAuth()
+    },
+    cartCount(newVal) {
+      console.log('🛒 Cart count changed to:', newVal)
     }
   }
 }

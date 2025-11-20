@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\BuyerAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PublicProductController;
+use App\Http\Controllers\CartController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,14 @@ Route::prefix('buyer')->group(function () {
 Route::middleware('auth:sanctum')->prefix('buyer')->group(function () {
     Route::post('/logout', [BuyerAuthController::class, 'logout']);
     Route::get('/profile', [BuyerAuthController::class, 'profile']);
+
+    // Cart routes
+        Route::get('/cart', [CartController::class, 'index']);
+        Route::get('/cart/count', [CartController::class, 'count']);
+        Route::post('/cart', [CartController::class, 'store']);
+        Route::put('/cart/{id}', [CartController::class, 'update']);
+        Route::delete('/cart/{id}', [CartController::class, 'destroy']);
+        Route::delete('/cart', [CartController::class, 'clear']);
 });
 
 // Public product routes (no authentication required)
