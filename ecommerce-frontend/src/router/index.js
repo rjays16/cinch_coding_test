@@ -7,7 +7,8 @@ import ResetPassword from '../views/ResetPassword.vue'
 import { authService } from '../services/authService'
 import Products from '../views/Products.vue'
 import Cart from '../views/Cart.vue'
-
+import Checkout from '../views/Checkout.vue'
+import ProductDetail from '../views/ProductDetail.vue'
 const routes = [
   {
     path: '/',
@@ -46,13 +47,19 @@ const routes = [
   {
     path: '/products/:id',
     name: 'ProductDetail',
-    component: () => import('../views/ProductDetail.vue')
+    component: ProductDetail
   },
   {
     path: '/cart',
     name: 'Cart',
     component: Cart,
     meta: { requiresAuth: true }
+  },
+  {
+  path: '/checkout',
+  name: 'Checkout',
+  component: Checkout,
+  meta: { requiresAuth: true }
   }
 ]
 

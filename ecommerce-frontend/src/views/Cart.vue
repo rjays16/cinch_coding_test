@@ -96,10 +96,12 @@
             <span>₱{{ cartTotal.toFixed(2) }}</span>
           </div>
 
-          <button class="btn-checkout" :disabled="isLoading">
-            <i class="fas fa-lock"></i>
-            Proceed to Checkout
-          </button>
+          <router-link to="/checkout" class="btn-checkout-link">
+            <button class="btn-checkout" :disabled="isLoading">
+              <i class="fas fa-lock"></i>
+              Proceed to Checkout
+            </button>
+          </router-link>
 
           <router-link to="/" class="btn-continue">
             Continue Shopping
@@ -499,5 +501,38 @@ export default {
     grid-column: 2;
     justify-self: end;
   }
+}
+
+.btn-checkout-link {
+  display: block;
+  text-decoration: none;
+  margin-top: 1.5rem;
+}
+
+.btn-checkout {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-checkout:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-checkout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
