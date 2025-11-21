@@ -7,8 +7,10 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Cart;
 use App\Services\StripeService;
+use App\Mail\OrderConfirmation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -27,174 +29,195 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-        'shipping.fullName' => 'required|string',
-        'shipping.phone' => 'required|string',
-        'shipping.email' => 'required|email',
-        'shipping.address' => 'required|string',
-        'shipping.city' => 'required|string',
-        'shipping.province' => 'required|string',
-        'shipping.postalCode' => 'required|string',
-        'payment_method' => 'required|in:cod,stripe,paypal',
-        'order_notes' => 'nullable|string',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation error',
-            'errors' => $validator->errors()
-        ], 422);
-    }
-
-    try {
-        $user = Auth::guard('buyer')->user();
-
-        // Get cart items
-        $cartItems = Cart::where('user_id', $user->id)
-            ->with('product')
-            ->get();
-
-        if ($cartItems->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cart is empty'
-            ], 400);
-        }
-
-        // CHECK STOCK AVAILABILITY FIRST
-        foreach ($cartItems as $item) {
-            if ($item->product->stock < $item->quantity) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Insufficient stock for {$item->product->name}. Only {$item->product->stock} available."
-                ], 400);
-            }
-        }
-
-        // Calculate totals
-        $subtotal = $cartItems->sum(function ($item) {
-            return $item->quantity * $item->product->price;
-        });
-        $shippingFee = 0; // Free shipping
-        $total = $subtotal + $shippingFee;
-
-        // Generate order number
-        $orderNumber = 'ORD-' . strtoupper(uniqid());
-
-        DB::beginTransaction();
-
-        // Create order
-        $order = Order::create([
-            'order_number' => $orderNumber,
-            'user_id' => $user->id,
-            'shipping_full_name' => $request->shipping['fullName'],
-            'shipping_phone' => $request->shipping['phone'],
-            'shipping_email' => $request->shipping['email'],
-            'shipping_address' => $request->shipping['address'],
-            'shipping_city' => $request->shipping['city'],
-            'shipping_province' => $request->shipping['province'],
-            'shipping_postal_code' => $request->shipping['postalCode'],
-            'subtotal' => $subtotal,
-            'shipping_fee' => $shippingFee,
-            'total' => $total,
-            'payment_method' => $request->payment_method,
-            'payment_status' => $request->payment_method === 'cod' ? 'pending' : 'pending',
-            'status' => 'pending',
-            'order_notes' => $request->order_notes,
+            'shipping.fullName' => 'required|string',
+            'shipping.phone' => 'required|string',
+            'shipping.email' => 'required|email',
+            'shipping.address' => 'required|string',
+            'shipping.city' => 'required|string',
+            'shipping.province' => 'required|string',
+            'shipping.postalCode' => 'required|string',
+            'payment_method' => 'required|in:cod,stripe,paypal',
+            'order_notes' => 'nullable|string',
         ]);
 
-        // Create order items AND reduce stock
-        foreach ($cartItems as $cartItem) {
-            // Create order item
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $cartItem->product_id,
-                'quantity' => $cartItem->quantity,
-                'price' => $cartItem->product->price,
-                'subtotal' => $cartItem->quantity * $cartItem->product->price,
-            ]);
-
-            // REDUCE STOCK
-            $cartItem->product->decrement('stock', $cartItem->quantity);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        // Handle Stripe payment
-        if ($request->payment_method === 'stripe') {
-            $orderData = [
-                'order_number' => $orderNumber,
-                'user_id' => $user->id,
-                'shipping' => $request->shipping,
-                'items' => $cartItems->map(function ($item) {
-                    return [
-                        'product' => [
-                            'name' => $item->product->name,
-                            'price' => $item->product->price,
-                            'category' => $item->product->category,
-                            'image_url' => $item->product->image ? asset('storage/' . $item->product->image) : null,
-                        ],
-                        'quantity' => $item->quantity,
-                    ];
-                })->toArray(),
-            ];
+        try {
+            $user = Auth::guard('buyer')->user();
 
-            $stripeSession = $this->stripeService->createCheckoutSession($orderData);
+            // Get cart items
+            $cartItems = Cart::where('user_id', $user->id)
+                ->with('product')
+                ->get();
 
-            if (!$stripeSession['success']) {
-                DB::rollBack();
+            if ($cartItems->isEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to create Stripe session',
-                    'error' => $stripeSession['message']
-                ], 500);
+                    'message' => 'Cart is empty'
+                ], 400);
             }
 
-            // Save Stripe session ID
-            $order->update([
-                'stripe_session_id' => $stripeSession['session_id']
+            // CHECK STOCK AVAILABILITY FIRST
+            foreach ($cartItems as $item) {
+                if ($item->product->stock < $item->quantity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient stock for {$item->product->name}. Only {$item->product->stock} available."
+                    ], 400);
+                }
+            }
+
+            // Calculate totals
+            $subtotal = $cartItems->sum(function ($item) {
+                return $item->quantity * $item->product->price;
+            });
+            $shippingFee = 0; // Free shipping
+            $total = $subtotal + $shippingFee;
+
+            // Generate order number
+            $orderNumber = 'ORD-' . strtoupper(uniqid());
+
+            DB::beginTransaction();
+
+            // Create order
+            $order = Order::create([
+                'order_number' => $orderNumber,
+                'user_id' => $user->id,
+                'shipping_full_name' => $request->shipping['fullName'],
+                'shipping_phone' => $request->shipping['phone'],
+                'shipping_email' => $request->shipping['email'],
+                'shipping_address' => $request->shipping['address'],
+                'shipping_city' => $request->shipping['city'],
+                'shipping_province' => $request->shipping['province'],
+                'shipping_postal_code' => $request->shipping['postalCode'],
+                'subtotal' => $subtotal,
+                'shipping_fee' => $shippingFee,
+                'total' => $total,
+                'payment_method' => $request->payment_method,
+                'payment_status' => $request->payment_method === 'cod' ? 'pending' : 'pending',
+                'status' => 'pending',
+                'order_notes' => $request->order_notes,
             ]);
 
+            // Create order items AND reduce stock
+            foreach ($cartItems as $cartItem) {
+                // Create order item
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $cartItem->product_id,
+                    'quantity' => $cartItem->quantity,
+                    'price' => $cartItem->product->price,
+                    'subtotal' => $cartItem->quantity * $cartItem->product->price,
+                ]);
+
+                // REDUCE STOCK
+                $cartItem->product->decrement('stock', $cartItem->quantity);
+            }
+
+            // Handle Stripe payment
+            if ($request->payment_method === 'stripe') {
+                $orderData = [
+                    'order_number' => $orderNumber,
+                    'user_id' => $user->id,
+                    'shipping' => $request->shipping,
+                    'items' => $cartItems->map(function ($item) {
+                        return [
+                            'product' => [
+                                'name' => $item->product->name,
+                                'price' => $item->product->price,
+                                'category' => $item->product->category,
+                                'image_url' => $item->product->image ? asset('storage/' . $item->product->image) : null,
+                            ],
+                            'quantity' => $item->quantity,
+                        ];
+                    })->toArray(),
+                ];
+
+                $stripeSession = $this->stripeService->createCheckoutSession($orderData);
+
+                if (!$stripeSession['success']) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to create Stripe session',
+                        'error' => $stripeSession['message']
+                    ], 500);
+                }
+
+                // Save Stripe session ID
+                $order->update([
+                    'stripe_session_id' => $stripeSession['session_id']
+                ]);
+
+                DB::commit();
+
+                // Clear cart
+                Cart::where('user_id', $user->id)->delete();
+
+                // Send order confirmation email for Stripe
+                try {
+                    // Reload order with relationships for email
+                    $order = Order::with('items.product')->find($order->id);
+                    Mail::to($order->shipping_email)->send(new OrderConfirmation($order));
+                    
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send order confirmation email: " . $e->getMessage());
+                    // Continue even if email fails - don't break the order process
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Order created successfully',
+                    'data' => [
+                        'order' => $order,
+                        'stripe_url' => $stripeSession['url'],
+                        'requires_payment' => true,
+                    ]
+                ], 201);
+            }
+
+            // For COD and PayPal
             DB::commit();
 
             // Clear cart
             Cart::where('user_id', $user->id)->delete();
+
+            // Send order confirmation email for COD/PayPal
+            try {
+                // Reload order with relationships for email
+                $order = Order::with('items.product')->find($order->id);
+                
+                Mail::to($order->shipping_email)->send(new OrderConfirmation($order));
+            } catch (\Exception $e) {
+                \Log::error("Failed to send order confirmation email: " . $e->getMessage());
+                // Continue even if email fails - don't break the order process
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Order created successfully',
                 'data' => [
                     'order' => $order,
-                    'stripe_url' => $stripeSession['url'],
-                    'requires_payment' => true,
+                    'requires_payment' => false,
                 ]
             ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create order',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // For COD and PayPal
-        DB::commit();
-
-        // Clear cart
-        Cart::where('user_id', $user->id)->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Order created successfully',
-            'data' => [
-                'order' => $order,
-                'requires_payment' => false,
-            ]
-        ], 201);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        \Log::error('Order creation error: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to create order',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     /**
      * Get user orders
@@ -301,9 +324,8 @@ class OrderController extends Controller
     }
 
     /**
-    * Cancel order and restore stock
-    */
-    
+     * Cancel order and restore stock
+     */
     public function cancel($id)
     {
         try {
@@ -327,7 +349,6 @@ class OrderController extends Controller
             // Restore stock for each item
             foreach ($order->items as $item) {
                 $item->product->increment('stock', $item->quantity);
-                \Log::info("Stock restored for product {$item->product->name}: +{$item->quantity}");
             }
 
             // Update order status
@@ -344,7 +365,6 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Order cancellation error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,

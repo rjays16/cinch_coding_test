@@ -266,7 +266,7 @@ export default {
 
         this.isLoading = false
       } catch (error) {
-        console.error('❌ Error loading products:', error)
+        console.error('Error loading products:', error)
         this.isLoading = false
       }
     },
