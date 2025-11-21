@@ -59,7 +59,7 @@
               <div class="quantity-controls">
                 <button 
                   @click="updateQuantity(item.id, item.quantity - 1)"
-                  :disabled="item.quantity <= 1"
+                  :disabled="item.quantity <= 1 || isUpdating"
                   class="btn-quantity"
                 >
                   <i class="fas fa-minus"></i>
@@ -70,11 +70,12 @@
                   @change="handleQuantityInput($event, item.id, item.product.stock)"
                   min="1"
                   :max="item.product.stock"
+                  :disabled="isUpdating"
                   class="quantity-input"
                 />
                 <button 
                   @click="updateQuantity(item.id, item.quantity + 1)"
-                  :disabled="item.quantity >= item.product.stock"
+                  :disabled="item.quantity >= item.product.stock || isUpdating"
                   class="btn-quantity"
                 >
                   <i class="fas fa-plus"></i>
@@ -87,9 +88,10 @@
               </div>
 
               <button 
-                @click="handleRemoveItem(item.id)" 
+                @click="handleRemoveItem(item)" 
                 class="btn-remove"
                 title="Remove item"
+                :disabled="isUpdating"
               >
                 <i class="fas fa-trash-alt"></i>
               </button>
@@ -141,16 +143,29 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <DeleteConfirmModal
+      :show="showDeleteModal"
+      :itemName="itemToDelete?.product?.name || 'this item'"
+      :isProcessing="isDeleting"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
 <script>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
+import DeleteConfirmModal from '@/components/modals/DeleteConfirmModal.vue'
 
 export default {
   name: 'Cart',
+  components: {
+    DeleteConfirmModal
+  },
   setup() {
     const router = useRouter()
     const { 
@@ -162,6 +177,12 @@ export default {
       updateCartItem, 
       removeFromCart 
     } = useCart()
+
+    // Delete modal state
+    const showDeleteModal = ref(false)
+    const itemToDelete = ref(null)
+    const isUpdating = ref(false)
+    const isDeleting = ref(false)
 
     // Check if any items have stock issues
     const hasStockIssues = computed(() => {
@@ -179,6 +200,11 @@ export default {
 
       const item = cartItems.value.find(i => i.id === itemId)
       
+      if (!item) {
+        console.error('Item not found')
+        return
+      }
+
       // Check if quantity exceeds available stock
       if (newQuantity > item.product.stock) {
         alert(`Sorry, only ${item.product.stock} units available in stock.`)
@@ -186,10 +212,20 @@ export default {
       }
 
       try {
-        await updateCartItem(itemId, newQuantity)
+        isUpdating.value = true
+        const success = await updateCartItem(itemId, newQuantity)
+        
+        if (!success) {
+          alert('Failed to update quantity. Please try again.')
+        }
       } catch (error) {
         console.error('Error updating quantity:', error)
-        alert('Failed to update quantity. Please try again.')
+        
+        // Better error message
+        const errorMessage = error.response?.data?.message || 'Failed to update quantity. Please try again.'
+        alert(errorMessage)
+      } finally {
+        isUpdating.value = false
       }
     }
 
@@ -209,15 +245,35 @@ export default {
       await updateQuantity(itemId, newQuantity)
     }
 
-    const handleRemoveItem = async (itemId) => {
-      if (confirm('Are you sure you want to remove this item from your cart?')) {
-        try {
-          await removeFromCart(itemId)
-        } catch (error) {
-          console.error('Error removing item:', error)
+    const handleRemoveItem = (item) => {
+      itemToDelete.value = item
+      showDeleteModal.value = true
+    }
+
+    const confirmDelete = async () => {
+      if (!itemToDelete.value) return
+
+      try {
+        isDeleting.value = true
+        const success = await removeFromCart(itemToDelete.value.id)
+        
+        if (success) {
+          showDeleteModal.value = false
+          itemToDelete.value = null
+        } else {
           alert('Failed to remove item. Please try again.')
         }
+      } catch (error) {
+        console.error('Error removing item:', error)
+        alert('Failed to remove item. Please try again.')
+      } finally {
+        isDeleting.value = false
       }
+    }
+
+    const cancelDelete = () => {
+      showDeleteModal.value = false
+      itemToDelete.value = null
     }
 
     const handleCheckout = () => {
@@ -240,10 +296,16 @@ export default {
       cartCount,
       cartTotal,
       isLoading,
+      isUpdating,
+      isDeleting,
       hasStockIssues,
+      showDeleteModal,
+      itemToDelete,
       updateQuantity,
       handleQuantityInput,
       handleRemoveItem,
+      confirmDelete,
+      cancelDelete,
       handleCheckout,
       formatPrice
     }
@@ -494,6 +556,11 @@ export default {
   border-color: #667eea;
 }
 
+.quantity-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .item-subtotal {
   display: flex;
   flex-direction: column;
@@ -523,9 +590,14 @@ export default {
   font-size: 0.95rem;
 }
 
-.btn-remove:hover {
+.btn-remove:hover:not(:disabled) {
   background: #e74c3c;
   color: white;
+}
+
+.btn-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Cart Summary */
