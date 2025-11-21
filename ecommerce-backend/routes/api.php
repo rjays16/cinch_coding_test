@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->prefix('buyer')->group(function () {
         Route::get('/orders/{id}', [OrderController::class, 'show']);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::post('/orders/verify-stripe', [OrderController::class, 'verifyStripePayment']);
+        Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
 });
 
 // Public product routes (no authentication required)

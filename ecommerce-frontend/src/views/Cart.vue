@@ -6,191 +6,233 @@
       <!-- Loading State -->
       <div v-if="isLoading" class="loading-state">
         <i class="fas fa-spinner fa-spin"></i>
-        <p>Loading cart...</p>
+        <p>Loading your cart...</p>
       </div>
 
       <!-- Empty Cart -->
       <div v-else-if="cartItems.length === 0" class="empty-cart">
-        <i class="fas fa-shopping-cart empty-icon"></i>
+        <div class="empty-cart-icon">
+          <i class="fas fa-shopping-cart"></i>
+        </div>
         <h2>Your cart is empty</h2>
-        <p>Add some products to get started!</p>
-        <router-link to="/" class="btn-primary">
-          Browse Products
+        <p>Looks like you haven't added any items to your cart yet.</p>
+        <router-link to="/" class="btn-shop-now">
+          <i class="fas fa-shopping-bag"></i>
+          Start Shopping
         </router-link>
       </div>
 
-      <!-- Cart Items -->
+      <!-- Cart Content -->
       <div v-else class="cart-content">
+        <!-- Cart Items -->
         <div class="cart-items">
-          <div
-            v-for="item in cartItems"
+          <div 
+            v-for="item in cartItems" 
             :key="item.id"
             class="cart-item"
           >
-            <img
-              :src="item.product.image_url || '/placeholder.png'"
-              :alt="item.product.name"
-              class="item-image"
-            />
-            
+            <div class="item-image">
+              <img :src="item.product.image_url" :alt="item.product.name" />
+            </div>
+
             <div class="item-details">
               <h3>{{ item.product.name }}</h3>
-              <p class="item-meta">
-                <span>Seller: {{ item.product.seller }}</span>
-                <span>Category: {{ item.product.category }}</span>
+              <p class="item-category">{{ item.product.category }}</p>
+              <p class="item-price">₱{{ formatPrice(item.product.price) }}</p>
+              
+              <!-- Stock Warnings -->
+              <p v-if="item.quantity > item.product.stock" class="stock-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                Only {{ item.product.stock }} units available!
               </p>
-              <p class="item-price">₱{{ item.product.price }}</p>
+              <p v-else-if="item.product.stock < 10 && item.product.stock > 0" class="low-stock-warning">
+                <i class="fas fa-info-circle"></i>
+                Only {{ item.product.stock }} left in stock
+              </p>
+              <p v-else-if="item.product.stock === 0" class="out-of-stock-warning">
+                <i class="fas fa-times-circle"></i>
+                Out of stock - Please remove this item
+              </p>
             </div>
 
-            <div class="item-quantity">
-              <button
-                @click="decreaseQuantity(item)"
-                class="qty-btn"
-                :disabled="isLoading"
+            <div class="item-actions">
+              <div class="quantity-controls">
+                <button 
+                  @click="updateQuantity(item.id, item.quantity - 1)"
+                  :disabled="item.quantity <= 1"
+                  class="btn-quantity"
+                >
+                  <i class="fas fa-minus"></i>
+                </button>
+                <input 
+                  type="number" 
+                  :value="item.quantity"
+                  @change="handleQuantityInput($event, item.id, item.product.stock)"
+                  min="1"
+                  :max="item.product.stock"
+                  class="quantity-input"
+                />
+                <button 
+                  @click="updateQuantity(item.id, item.quantity + 1)"
+                  :disabled="item.quantity >= item.product.stock"
+                  class="btn-quantity"
+                >
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+
+              <div class="item-subtotal">
+                <span class="subtotal-label">Subtotal:</span>
+                <span class="subtotal-price">₱{{ formatPrice(item.subtotal) }}</span>
+              </div>
+
+              <button 
+                @click="handleRemoveItem(item.id)" 
+                class="btn-remove"
+                title="Remove item"
               >
-                <i class="fas fa-minus"></i>
-              </button>
-              <span class="qty-value">{{ item.quantity }}</span>
-              <button
-                @click="increaseQuantity(item)"
-                class="qty-btn"
-                :disabled="isLoading || item.quantity >= item.product.stock"
-              >
-                <i class="fas fa-plus"></i>
+                <i class="fas fa-trash-alt"></i>
               </button>
             </div>
-
-            <div class="item-subtotal">
-              <p class="subtotal-label">Subtotal</p>
-              <p class="subtotal-amount">₱{{ item.subtotal.toFixed(2) }}</p>
-            </div>
-
-            <button
-              @click="showRemoveModal(item)"
-              class="btn-remove"
-              :disabled="isLoading"
-            >
-              <i class="fas fa-trash"></i>
-            </button>
           </div>
         </div>
 
         <!-- Cart Summary -->
         <div class="cart-summary">
           <h2>Order Summary</h2>
-          
+
           <div class="summary-row">
-            <span>Items ({{ cartCount }})</span>
-            <span>₱{{ cartTotal.toFixed(2) }}</span>
+            <span>Subtotal ({{ cartCount }} items)</span>
+            <span>₱{{ formatPrice(cartTotal) }}</span>
           </div>
 
           <div class="summary-row">
-            <span>Shipping</span>
-            <span>FREE</span>
+            <span>Shipping Fee</span>
+            <span class="free-text">FREE</span>
           </div>
 
           <div class="summary-divider"></div>
 
           <div class="summary-row summary-total">
             <span>Total</span>
-            <span>₱{{ cartTotal.toFixed(2) }}</span>
+            <span>₱{{ formatPrice(cartTotal) }}</span>
           </div>
 
-          <router-link to="/checkout" class="btn-checkout-link">
-            <button class="btn-checkout" :disabled="isLoading">
-              <i class="fas fa-lock"></i>
-              Proceed to Checkout
-            </button>
+          <router-link 
+            to="/checkout" 
+            class="btn-checkout"
+            :class="{ 'disabled': hasStockIssues }"
+            @click.prevent="handleCheckout"
+          >
+            <i class="fas fa-lock"></i>
+            Proceed to Checkout
           </router-link>
 
-          <router-link to="/" class="btn-continue">
+          <!-- Stock Issue Warning -->
+          <div v-if="hasStockIssues" class="checkout-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Please update quantities or remove out-of-stock items before checkout</p>
+          </div>
+
+          <router-link to="/" class="btn-continue-shopping">
+            <i class="fas fa-arrow-left"></i>
             Continue Shopping
           </router-link>
         </div>
       </div>
     </div>
-
-    <!-- Remove Item Confirmation Modal -->
-    <RemoveCartItemModal
-      :show="showRemoveConfirm"
-      :itemName="itemToRemove?.product?.name"
-      :isLoading="isRemoving"
-      @confirm="confirmRemove"
-      @cancel="cancelRemove"
-    />
   </div>
 </template>
 
 <script>
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
-import { onMounted, ref } from 'vue'
-import RemoveCartItemModal from '@/components/modals/RemoveCartItemModal.vue'
 
 export default {
   name: 'Cart',
-  components: {
-    RemoveCartItemModal
-  },
   setup() {
-    const {
-      cartItems,
-      cartCount,
-      cartTotal,
-      isLoading,
-      loadCart,
-      updateQuantity,
-      removeFromCart
+    const router = useRouter()
+    const { 
+      cartItems, 
+      cartCount, 
+      cartTotal, 
+      isLoading, 
+      loadCart, 
+      updateCartItem, 
+      removeFromCart 
     } = useCart()
 
-    const showRemoveConfirm = ref(false)
-    const itemToRemove = ref(null)
-    const isRemoving = ref(false)
-
-    onMounted(() => {
-      loadCart()
+    // Check if any items have stock issues
+    const hasStockIssues = computed(() => {
+      return cartItems.value.some(item => 
+        item.quantity > item.product.stock || item.product.stock === 0
+      )
     })
 
-    const increaseQuantity = async (item) => {
+    onMounted(async () => {
+      await loadCart()
+    })
+
+    const updateQuantity = async (itemId, newQuantity) => {
+      if (newQuantity < 1) return
+
+      const item = cartItems.value.find(i => i.id === itemId)
+      
+      // Check if quantity exceeds available stock
+      if (newQuantity > item.product.stock) {
+        alert(`Sorry, only ${item.product.stock} units available in stock.`)
+        return
+      }
+
       try {
-        await updateQuantity(item.id, item.quantity + 1)
+        await updateCartItem(itemId, newQuantity)
       } catch (error) {
-        alert(error.response?.data?.message || 'Failed to update quantity')
+        console.error('Error updating quantity:', error)
+        alert('Failed to update quantity. Please try again.')
       }
     }
 
-    const decreaseQuantity = async (item) => {
-      try {
-        await updateQuantity(item.id, item.quantity - 1)
-      } catch (error) {
-        alert(error.response?.data?.message || 'Failed to update quantity')
+    const handleQuantityInput = async (event, itemId, maxStock) => {
+      let newQuantity = parseInt(event.target.value)
+      
+      if (isNaN(newQuantity) || newQuantity < 1) {
+        newQuantity = 1
+      }
+      
+      if (newQuantity > maxStock) {
+        alert(`Sorry, only ${maxStock} units available in stock.`)
+        newQuantity = maxStock
+      }
+      
+      event.target.value = newQuantity
+      await updateQuantity(itemId, newQuantity)
+    }
+
+    const handleRemoveItem = async (itemId) => {
+      if (confirm('Are you sure you want to remove this item from your cart?')) {
+        try {
+          await removeFromCart(itemId)
+        } catch (error) {
+          console.error('Error removing item:', error)
+          alert('Failed to remove item. Please try again.')
+        }
       }
     }
 
-    const showRemoveModal = (item) => {
-      itemToRemove.value = item
-      showRemoveConfirm.value = true
-    }
-
-    const cancelRemove = () => {
-      showRemoveConfirm.value = false
-      itemToRemove.value = null
-    }
-
-    const confirmRemove = async () => {
-      if (!itemToRemove.value) return
-
-      try {
-        isRemoving.value = true
-        await removeFromCart(itemToRemove.value.id)
-        
-        // Success - close modal
-        showRemoveConfirm.value = false
-        itemToRemove.value = null
-      } catch (error) {
-        alert('Failed to remove item')
-      } finally {
-        isRemoving.value = false
+    const handleCheckout = () => {
+      if (hasStockIssues.value) {
+        alert('Please update quantities or remove out-of-stock items before proceeding to checkout.')
+        return
       }
+      router.push('/checkout')
+    }
+
+    const formatPrice = (price) => {
+      return new Intl.NumberFormat('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(price)
     }
 
     return {
@@ -198,14 +240,12 @@ export default {
       cartCount,
       cartTotal,
       isLoading,
-      increaseQuantity,
-      decreaseQuantity,
-      showRemoveModal,
-      showRemoveConfirm,
-      itemToRemove,
-      isRemoving,
-      confirmRemove,
-      cancelRemove
+      hasStockIssues,
+      updateQuantity,
+      handleQuantityInput,
+      handleRemoveItem,
+      handleCheckout,
+      formatPrice
     }
   }
 }
@@ -215,13 +255,13 @@ export default {
 .cart-page {
   min-height: 100vh;
   background: #f8f9fa;
-  padding: 2rem 0;
+  padding: 2rem 0 4rem 0;
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 2rem;
 }
 
 .page-title {
@@ -242,32 +282,70 @@ export default {
   margin-bottom: 1rem;
 }
 
+.loading-state p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
 /* Empty Cart */
 .empty-cart {
   text-align: center;
-  padding: 4rem 0;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.empty-icon {
-  font-size: 5rem;
-  color: #ddd;
-  margin-bottom: 1rem;
+.empty-cart-icon {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 2rem;
+  background: #f8f9ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-cart-icon i {
+  font-size: 4rem;
+  color: #667eea;
 }
 
 .empty-cart h2 {
+  margin: 0 0 1rem 0;
   color: #2c3e50;
-  margin-bottom: 0.5rem;
+  font-size: 1.75rem;
 }
 
 .empty-cart p {
+  margin: 0 0 2rem 0;
   color: #666;
-  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.btn-shop-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-shop-now:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
 }
 
 /* Cart Content */
 .cart-content {
   display: grid;
-  grid-template-columns: 1fr 350px;
+  grid-template-columns: 1fr 400px;
   gap: 2rem;
 }
 
@@ -275,130 +353,198 @@ export default {
 .cart-items {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .cart-item {
   background: white;
   padding: 1.5rem;
   border-radius: 12px;
-  display: grid;
-  grid-template-columns: 100px 1fr auto auto auto;
-  gap: 1.5rem;
-  align-items: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 1.5rem;
+  align-items: start;
 }
 
 .item-image {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
+  width: 120px;
+  height: 120px;
   border-radius: 8px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.item-details {
+  flex: 1;
 }
 
 .item-details h3 {
-  font-size: 1.1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
   color: #2c3e50;
-  margin-bottom: 0.5rem;
 }
 
-.item-meta {
-  font-size: 0.875rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.item-meta span {
-  margin-right: 1rem;
+.item-category {
+  margin: 0 0 0.5rem 0;
+  color: #667eea;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .item-price {
+  margin: 0;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #667eea;
 }
 
-/* Quantity Controls */
-.item-quantity {
+/* Stock Warnings */
+.stock-warning {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.low-stock-warning {
+  color: #ff9800;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.out-of-stock-warning {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  background: #ffebee;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+/* Item Actions */
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.quantity-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.qty-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #ddd;
+.btn-quantity {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #e0e0e0;
   background: white;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
 }
 
-.qty-btn:hover:not(:disabled) {
-  background: #f0f0f0;
+.btn-quantity:hover:not(:disabled) {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8f9ff;
 }
 
-.qty-btn:disabled {
-  opacity: 0.5;
+.btn-quantity:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.qty-value {
-  min-width: 40px;
+.quantity-input {
+  width: 60px;
+  height: 36px;
   text-align: center;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
   font-weight: 600;
+  font-size: 1rem;
 }
 
-/* Subtotal */
+.quantity-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
 .item-subtotal {
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
 }
 
 .subtotal-label {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: #666;
-  margin-bottom: 0.25rem;
 }
 
-.subtotal-amount {
+.subtotal-price {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #2c3e50;
 }
 
-/* Remove Button */
 .btn-remove {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: #fee;
+  padding: 0.5rem 1rem;
+  background: #ffebee;
   color: #e74c3c;
-  border-radius: 8px;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s;
+  font-size: 0.95rem;
 }
 
-.btn-remove:hover:not(:disabled) {
+.btn-remove:hover {
   background: #e74c3c;
   color: white;
 }
 
 /* Cart Summary */
 .cart-summary {
+  position: sticky;
+  top: 2rem;
   background: white;
   padding: 2rem;
   border-radius: 12px;
-  height: fit-content;
-  position: sticky;
-  top: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: fit-content;
 }
 
 .cart-summary h2 {
+  margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
   color: #2c3e50;
-  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .summary-row {
@@ -406,65 +552,35 @@ export default {
   justify-content: space-between;
   margin-bottom: 1rem;
   color: #666;
+  font-size: 1rem;
+}
+
+.free-text {
+  color: #4caf50;
+  font-weight: 600;
 }
 
 .summary-divider {
   height: 1px;
-  background: #eee;
+  background: #e0e0e0;
   margin: 1.5rem 0;
 }
 
 .summary-total {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #2c3e50;
 }
 
 .btn-checkout {
-  width: 100%;
-  padding: 1rem;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 1.5rem;
-  transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-checkout:hover:not(:disabled) {
-  background: #5568d3;
-  transform: translateY(-2px);
-}
-
-.btn-checkout:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-continue {
-  display: block;
-  text-align: center;
-  color: #667eea;
-  margin-top: 1rem;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.btn-continue:hover {
-  text-decoration: underline;
-}
-
-.btn-primary {
-  display: inline-block;
-  padding: 1rem 2rem;
-  background: #667eea;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   text-decoration: none;
   border-radius: 8px;
@@ -472,13 +588,62 @@ export default {
   transition: all 0.3s;
 }
 
-.btn-primary:hover {
-  background: #5568d3;
+.btn-checkout:hover:not(.disabled) {
   transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-checkout.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.checkout-warning {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff3cd;
+  border-left: 4px solid #ff9800;
+  border-radius: 6px;
+  display: flex;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.checkout-warning i {
+  color: #ff9800;
+  margin-top: 0.125rem;
+}
+
+.checkout-warning p {
+  margin: 0;
+  color: #856404;
+  font-size: 0.9rem;
+}
+
+.btn-continue-shopping {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem;
+  margin-top: 1rem;
+  background: white;
+  color: #667eea;
+  text-decoration: none;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-continue-shopping:hover {
+  background: #f8f9ff;
 }
 
 /* Responsive */
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .cart-content {
     grid-template-columns: 1fr;
   }
@@ -486,53 +651,31 @@ export default {
   .cart-summary {
     position: static;
   }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
 
   .cart-item {
-    grid-template-columns: 80px 1fr;
+    grid-template-columns: 1fr;
     gap: 1rem;
   }
 
-  .item-quantity,
-  .item-subtotal {
-    grid-column: 2;
+  .item-image {
+    width: 100%;
+    height: 200px;
   }
 
-  .btn-remove {
-    grid-column: 2;
-    justify-self: end;
+  .item-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
   }
-}
-
-.btn-checkout-link {
-  display: block;
-  text-decoration: none;
-  margin-top: 1.5rem;
-}
-
-.btn-checkout {
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-checkout:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-}
-
-.btn-checkout:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 </style>
