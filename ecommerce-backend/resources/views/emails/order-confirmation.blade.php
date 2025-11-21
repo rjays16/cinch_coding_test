@@ -10,404 +10,446 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
         }
-        
+
         .email-container {
             max-width: 600px;
             margin: 0 auto;
-            background: white;
+            background-color: #ffffff;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-        
+
+        /* Header with Background Image */
         .email-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+                        url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&h=600&fit=crop') center/cover;
             color: white;
-            padding: 40px 30px;
+            padding: 50px 30px;
             text-align: center;
         }
-        
+
         .email-header h1 {
-            font-size: 28px;
+            font-size: 32px;
             margin-bottom: 10px;
+            font-weight: 700;
         }
-        
+
         .email-header p {
             font-size: 16px;
             opacity: 0.95;
         }
-        
-        .success-icon {
-            width: 80px;
-            height: 80px;
-            background: white;
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-        }
-        
+
         .email-body {
             padding: 40px 30px;
         }
-        
-        .order-info {
-            background: #f8f9fa;
-            padding: 20px;
+
+        .greeting {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        /* Order Details */
+        .order-details {
+            background: #f9fafb;
             border-radius: 8px;
+            padding: 25px;
             margin-bottom: 30px;
         }
-        
-        .order-info-row {
+
+        .order-details h2 {
+            font-size: 20px;
+            color: #1f2937;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        .detail-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
         }
-        
-        .order-info-row:last-child {
+
+        .detail-row:last-child {
             border-bottom: none;
         }
-        
-        .order-info-label {
+
+        .detail-label {
             font-weight: 600;
-            color: #666;
+            color: #4b5563;
+            font-size: 14px;
+            min-width: 120px;
+            flex-shrink: 0;
         }
-        
-        .order-info-value {
-            color: #2c3e50;
-            font-weight: 600;
+
+        .detail-value {
+            color: #1f2937;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: right;
+            word-break: break-word;
+            flex: 1;
         }
-        
-        .order-number {
-            color: #667eea;
-            font-size: 20px;
-            font-weight: 700;
-        }
-        
-        .section-title {
-            font-size: 20px;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
+
+        /* Order Items */
         .order-items {
             margin-bottom: 30px;
         }
-        
-        .order-item {
+
+        .order-items h2 {
+            font-size: 20px;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+
+        .item {
             display: flex;
-            gap: 20px;
-            padding: 20px;
-            border: 1px solid #e0e0e0;
+            gap: 15px;
+            padding: 15px;
+            background: #f9fafb;
             border-radius: 8px;
             margin-bottom: 15px;
-            align-items: center;
         }
-        
+
         .item-image {
-            width: 100px;
-            height: 100px;
-            border-radius: 8px;
+            width: 80px;
+            height: 80px;
+            border-radius: 6px;
             overflow: hidden;
             flex-shrink: 0;
         }
-        
+
         .item-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        
+
         .item-details {
             flex: 1;
         }
-        
+
         .item-name {
-            font-size: 16px;
             font-weight: 600;
-            color: #2c3e50;
+            color: #1f2937;
+            font-size: 15px;
             margin-bottom: 5px;
         }
-        
-        .item-quantity {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+
+        .item-meta {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 8px;
         }
-        
+
         .item-price {
+            font-weight: 600;
             color: #667eea;
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 15px;
         }
-        
-        .shipping-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        
-        .shipping-row {
-            margin-bottom: 10px;
-            color: #666;
-        }
-        
-        .shipping-row strong {
-            color: #2c3e50;
-            display: inline-block;
-            min-width: 120px;
-        }
-        
+
+        /* Order Summary */
         .order-summary {
-            background: #f8f9fa;
-            padding: 20px;
+            background: #f9fafb;
             border-radius: 8px;
+            padding: 25px;
             margin-bottom: 30px;
         }
-        
+
         .summary-row {
             display: flex;
             justify-content: space-between;
             padding: 10px 0;
-            color: #666;
+            font-size: 15px;
         }
-        
-        .summary-divider {
-            height: 1px;
-            background: #e0e0e0;
-            margin: 15px 0;
-        }
-        
-        .summary-total {
-            font-size: 20px;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-        
-        .payment-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
+
+        .summary-row.total {
+            border-top: 2px solid #e5e7eb;
             margin-top: 10px;
+            padding-top: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
         }
-        
-        .payment-cod {
-            background: #e8f5e9;
-            color: #4caf50;
-        }
-        
-        .payment-stripe {
-            background: #ede7f6;
-            color: #6772e5;
-        }
-        
-        .payment-paypal {
-            background: #e3f2fd;
-            color: #0070ba;
-        }
-        
-        .email-footer {
-            background: #f8f9fa;
-            padding: 30px;
+
+        /* CTA Button */
+        .cta-button {
             text-align: center;
-            color: #666;
-            font-size: 14px;
+            margin: 30px 0;
         }
-        
-        .email-footer p {
-            margin-bottom: 10px;
-        }
-        
-        .social-links {
-            margin-top: 20px;
-        }
-        
-        .social-links a {
+
+        .cta-button a {
             display: inline-block;
-            margin: 0 10px;
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        .button {
-            display: inline-block;
-            padding: 12px 30px;
+            padding: 16px 40px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             text-decoration: none;
             border-radius: 8px;
             font-weight: 600;
-            margin-top: 20px;
+            font-size: 16px;
+            transition: all 0.3s;
         }
-        
+
+        /* Footer */
+        .email-footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .email-footer p {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+
+        .social-links {
+            margin: 20px 0;
+        }
+
+        .social-links a {
+            display: inline-block;
+            margin: 0 8px;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .contact-info {
+            font-size: 13px;
+            color: #9ca3af;
+            margin-top: 15px;
+        }
+
+        /* Responsive */
         @media only screen and (max-width: 600px) {
             .email-body {
-                padding: 20px 15px;
+                padding: 30px 20px;
             }
-            
-            .order-item {
+
+            .email-header {
+                padding: 40px 20px;
+            }
+
+            .email-header h1 {
+                font-size: 26px;
+            }
+
+            .order-details,
+            .order-summary {
+                padding: 20px;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .detail-value {
+                text-align: left;
+            }
+
+            .item {
                 flex-direction: column;
             }
-            
+
             .item-image {
                 width: 100%;
-                height: 200px;
+                height: 150px;
             }
         }
     </style>
 </head>
 <body>
     <div class="email-container">
-        <!-- Header -->
+        <!-- Header with Background Image -->
         <div class="email-header">
-            <div class="success-icon">✓</div>
-            <h1>Order Confirmed!</h1>
-            <p>Thank you for your order</p>
+            <h1>🎉 Order Confirmed!</h1>
+            <p>Thank you for your purchase</p>
         </div>
-        
-        <!-- Body -->
+
+        <!-- Email Body -->
         <div class="email-body">
-            <!-- Order Info -->
-            <div class="order-info">
-                <div class="order-info-row">
-                    <span class="order-info-label">Order Number:</span>
-                    <span class="order-number">{{ $order->order_number }}</span>
+            <p class="greeting">Hi {{ $order->user->first_name }},</p>
+            
+            <p class="message">
+                Great news! Your order has been confirmed and is being processed. 
+                We'll send you another email when your order has been shipped.
+            </p>
+
+            <!-- Order Details -->
+            <div class="order-details">
+                <h2>Order Details</h2>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Order Number:</span>
+                    <span class="detail-value">{{ $order->order_number }}</span>
                 </div>
-                <div class="order-info-row">
-                    <span class="order-info-label">Order Date:</span>
-                    <span class="order-info-value">{{ $order->created_at->format('F d, Y h:i A') }}</span>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Order Date:</span>
+                    <span class="detail-value">{{ $order->created_at->format('F d, Y') }}</span>
                 </div>
-                <div class="order-info-row">
-                    <span class="order-info-label">Payment Method:</span>
-                    <span class="order-info-value">
-                        @if($order->payment_method === 'cod')
-                            <span class="payment-badge payment-cod">💵 Cash on Delivery</span>
-                        @elseif($order->payment_method === 'stripe')
-                            <span class="payment-badge payment-stripe">💳 Credit/Debit Card (Stripe)</span>
-                        @elseif($order->payment_method === 'paypal')
-                            <span class="payment-badge payment-paypal">💙 PayPal</span>
-                        @endif
-                    </span>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method:</span>
+                    <span class="detail-value">{{ strtoupper($order->payment_method) }}</span>
                 </div>
-                <div class="order-info-row">
-                    <span class="order-info-label">Order Status:</span>
-                    <span class="order-info-value" style="color: #ff9800; text-transform: capitalize;">
-                        {{ ucfirst($order->status) }}
-                    </span>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Payment Status:</span>
+                    <span class="detail-value">{{ ucfirst($order->payment_status) }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Order Status:</span>
+                    <span class="detail-value">{{ ucfirst($order->status) }}</span>
                 </div>
             </div>
-            
+
             <!-- Order Items -->
-            <h2 class="section-title">Order Items</h2>
             <div class="order-items">
+                <h2>Order Items</h2>
+                
                 @foreach($order->items as $item)
-                <div class="order-item">
+                <div class="item">
                     <div class="item-image">
-                        @if($item->product->image)
-                            <img src="{{ asset('storage/' . $item->product->image) }}" alt="{{ $item->product->name }}">
-                        @else
-                            <img src="https://via.placeholder.com/100" alt="{{ $item->product->name }}">
-                        @endif
+                        @php
+                            if($item->product->image && !app()->environment('local')) {
+                                $imageUrl = url('storage/' . $item->product->image);
+                            } else {
+                                $initials = strtoupper(substr($item->product->name, 0, 2));
+                                $imageUrl = 'https://via.placeholder.com/100/667eea/ffffff?text=' . urlencode($initials);
+                            }
+                        @endphp
+                        <img src="{{ $imageUrl }}" alt="{{ $item->product->name }}">
                     </div>
                     <div class="item-details">
                         <div class="item-name">{{ $item->product->name }}</div>
-                        <div class="item-quantity">Quantity: {{ $item->quantity }}</div>
+                        <div class="item-meta">Quantity: {{ $item->quantity }} × ₱{{ number_format($item->price, 2) }}</div>
                         <div class="item-price">₱{{ number_format($item->subtotal, 2) }}</div>
                     </div>
                 </div>
                 @endforeach
             </div>
-            
-            <!-- Shipping Information -->
-            <h2 class="section-title">Shipping Information</h2>
-            <div class="shipping-info">
-                <div class="shipping-row">
-                    <strong>Name:</strong> {{ $order->shipping_full_name }}
-                </div>
-                <div class="shipping-row">
-                    <strong>Phone:</strong> {{ $order->shipping_phone }}
-                </div>
-                <div class="shipping-row">
-                    <strong>Email:</strong> {{ $order->shipping_email }}
-                </div>
-                <div class="shipping-row">
-                    <strong>Address:</strong> {{ $order->shipping_address }}
-                </div>
-                <div class="shipping-row">
-                    <strong>City:</strong> {{ $order->shipping_city }}
-                </div>
-                <div class="shipping-row">
-                    <strong>Province:</strong> {{ $order->shipping_province }}
-                </div>
-                <div class="shipping-row">
-                    <strong>Postal Code:</strong> {{ $order->shipping_postal_code }}
-                </div>
-            </div>
-            
+
             <!-- Order Summary -->
-            <h2 class="section-title">Order Summary</h2>
             <div class="order-summary">
                 <div class="summary-row">
-                    <span>Subtotal ({{ $order->items->count() }} items):</span>
+                    <span>Subtotal:</span>
                     <span>₱{{ number_format($order->subtotal, 2) }}</span>
                 </div>
                 <div class="summary-row">
                     <span>Shipping Fee:</span>
-                    <span style="color: #4caf50; font-weight: 600;">FREE</span>
+                    <span>
+                        @if($order->shipping_fee > 0)
+                            ₱{{ number_format($order->shipping_fee, 2) }}
+                        @else
+                            <span style="color: #10b981; font-weight: 600;">FREE</span>
+                        @endif
+                    </span>
                 </div>
-                <div class="summary-divider"></div>
-                <div class="summary-row summary-total">
+                <div class="summary-row total">
                     <span>Total:</span>
                     <span>₱{{ number_format($order->total, 2) }}</span>
                 </div>
             </div>
-            
-            @if($order->order_notes)
-            <!-- Order Notes -->
-            <h2 class="section-title">Order Notes</h2>
-            <div class="shipping-info">
-                <p>{{ $order->order_notes }}</p>
+
+            <!-- Shipping Information -->
+            <div class="order-details">
+                <h2>Shipping Information</h2>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Full Name:</span>
+                    <span class="detail-value">{{ $order->shipping_full_name ?: $order->user->first_name }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{ $order->shipping_email ?: $order->user->email }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Phone:</span>
+                    <span class="detail-value">{{ $order->shipping_phone }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Address:</span>
+                    <span class="detail-value">
+                        {{ $order->shipping_address }}
+                        @if($order->shipping_city || $order->shipping_province || $order->shipping_postal_code)
+                            <br>
+                            @if($order->shipping_city){{ $order->shipping_city }}@endif
+                            @if($order->shipping_province), {{ $order->shipping_province }}@endif
+                            @if($order->shipping_postal_code) {{ $order->shipping_postal_code }}@endif
+                        @endif
+                    </span>
+                </div>
+                
+                @if($order->order_notes)
+                <div class="detail-row">
+                    <span class="detail-label">Order Notes:</span>
+                    <span class="detail-value">{{ $order->order_notes }}</span>
+                </div>
+                @endif
             </div>
-            @endif
-            
-            <!-- Call to Action -->
-            <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin-bottom: 10px;">Track your order or view details:</p>
-                <a href="{{ env('BUYER_FRONTEND_URL') }}" class="button">View My Orders</a>
+
+            <!-- CTA Button -->
+            <div class="cta-button">
+                <a href="{{ url('/orders/' . $order->id) }}">View My Orders</a>
             </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="email-footer">
-            <p><strong>E-Commerce</strong></p>
-            <p>Thank you for shopping with us!</p>
-            <p>If you have any questions, please contact us at {{ env('MAIL_FROM_ADDRESS') }}</p>
-            
-            <div class="social-links">
-                <a href="#">Facebook</a> | 
-                <a href="#">Twitter</a> | 
-                <a href="#">Instagram</a>
-            </div>
-            
-            <p style="margin-top: 20px; font-size: 12px; color: #999;">
-                © {{ date('Y') }} E-Commerce. All rights reserved.
+
+            <p class="message" style="text-align: center; font-size: 14px;">
+                If you have any questions, feel free to contact our support team.
             </p>
         </div>
-    </div>
+
+        <!-- Footer -->
+        @php
+            $appName = config('app.name', 'E-Commerce');
+            $supportEmail = 'support@' . strtolower(str_replace(' ', '', $appName)) . '.com';
+        @endphp
+
+        <div class="email-footer">
+            <p style="font-weight: 600; color: #1f2937;">Thank you for shopping with us!</p>
+            
+            <div class="social-links">
+                <a href="#">Facebook</a> • 
+                <a href="#">Twitter</a> • 
+                <a href="#">Instagram</a>
+            </div>
+
+            <div class="contact-info">
+                <p style="margin-bottom: 5px;">{{ $appName }}</p>
+                <p style="margin-bottom: 5px;">
+                    <a href="mailto:{{ $supportEmail }}" 
+                    style="color: #667eea; text-decoration: none;">
+                        {{ $supportEmail }}
+                    </a>
+                </p>
+                <p>&copy; {{ date('Y') }} {{ $appName }}. All rights reserved.</p>
+            </div>
+        </div>
 </body>
 </html>
