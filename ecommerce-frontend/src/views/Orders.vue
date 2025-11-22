@@ -1,7 +1,14 @@
 <template>
   <div class="orders-page">
     <div class="container">
-      <h1 class="page-title">My Orders</h1>
+      <!-- Page Header with Navigation -->
+      <div class="page-header">
+        <h1 class="page-title">My Orders</h1>
+        <router-link to="/" class="btn-back-home">
+          <i class="fas fa-home"></i>
+          Back to Home
+        </router-link>
+      </div>
 
       <!-- Loading State -->
       <div v-if="isLoading" class="loading-state">
@@ -25,7 +32,7 @@
       <!-- Orders List -->
       <div v-else class="orders-list">
         <div 
-          v-for="order in orders" 
+          v-for="order in paginatedOrders" 
           :key="order.id"
           class="order-card"
         >
@@ -82,13 +89,51 @@
             </router-link>
           </div>
         </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="pagination">
+          <button 
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="pagination-btn"
+          >
+            <i class="fas fa-chevron-left"></i>
+            Previous
+          </button>
+
+          <div class="pagination-pages">
+            <button
+              v-for="page in visiblePages"
+              :key="page"
+              @click="goToPage(page)"
+              class="pagination-page"
+              :class="{ active: currentPage === page }"
+            >
+              {{ page }}
+            </button>
+          </div>
+
+          <button 
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="pagination-btn"
+          >
+            Next
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+
+        <!-- Results Info -->
+        <div class="results-info">
+          Showing {{ startIndex + 1 }} to {{ endIndex }} of {{ orders.length }} orders
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
 export default {
@@ -96,6 +141,50 @@ export default {
   setup() {
     const orders = ref([])
     const isLoading = ref(false)
+    const currentPage = ref(1)
+    const perPage = 5
+
+    // Computed: Total Pages
+    const totalPages = computed(() => {
+      return Math.ceil(orders.value.length / perPage)
+    })
+
+    // Computed: Paginated Orders
+    const paginatedOrders = computed(() => {
+      const start = (currentPage.value - 1) * perPage
+      const end = start + perPage
+      return orders.value.slice(start, end)
+    })
+
+    // Computed: Start and End Index
+    const startIndex = computed(() => {
+      return (currentPage.value - 1) * perPage
+    })
+
+    const endIndex = computed(() => {
+      const end = currentPage.value * perPage
+      return end > orders.value.length ? orders.value.length : end
+    })
+
+    // Computed: Visible Pages
+    const visiblePages = computed(() => {
+      const pages = []
+      const maxVisible = 5
+      
+      let start = Math.max(1, currentPage.value - 2)
+      let end = Math.min(totalPages.value, start + maxVisible - 1)
+      
+      // Adjust start if we're near the end
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1)
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      
+      return pages
+    })
 
     const loadOrders = async () => {
       try {
@@ -109,6 +198,14 @@ export default {
         console.error('Error loading orders:', error)
       } finally {
         isLoading.value = false
+      }
+    }
+
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     }
 
@@ -134,6 +231,13 @@ export default {
     return {
       orders,
       isLoading,
+      currentPage,
+      totalPages,
+      paginatedOrders,
+      startIndex,
+      endIndex,
+      visiblePages,
+      goToPage,
       formatDate,
       formatPrice
     }
@@ -154,10 +258,38 @@ export default {
   padding: 0 2rem;
 }
 
+/* Page Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
 .page-title {
   font-size: 2rem;
   color: #2c3e50;
-  margin-bottom: 2rem;
+  margin: 0;
+}
+
+.btn-back-home {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  color: #667eea;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  border: 2px solid #667eea;
+  transition: all 0.3s;
+}
+
+.btn-back-home:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
 }
 
 /* Loading State */
@@ -399,10 +531,93 @@ export default {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 2rem 0;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8f9ff;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-pages {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pagination-page {
+  width: 45px;
+  height: 45px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.pagination-page:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8f9ff;
+}
+
+.pagination-page.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+/* Results Info */
+.results-info {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  padding: 1rem 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .container {
     padding: 0 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .btn-back-home {
+    width: 100%;
+    justify-content: center;
   }
 
   .page-title {
@@ -435,6 +650,16 @@ export default {
   .btn-view-details {
     width: 100%;
     text-align: center;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .pagination-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
