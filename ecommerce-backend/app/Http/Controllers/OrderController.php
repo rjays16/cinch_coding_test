@@ -100,7 +100,7 @@ class OrderController extends Controller
                 'shipping_fee' => $shippingFee,
                 'total' => $total,
                 'payment_method' => $request->payment_method,
-                'payment_status' => $request->payment_method === 'cod' ? 'pending' : 'pending',
+                'payment_status' => 'pending',
                 'status' => 'pending',
                 'order_notes' => $request->order_notes,
             ]);
@@ -160,17 +160,6 @@ class OrderController extends Controller
                 // Clear cart
                 Cart::where('user_id', $user->id)->delete();
 
-                // Send order confirmation email for Stripe
-                try {
-                    // Reload order with relationships for email
-                    $order = Order::with('items.product')->find($order->id);
-                    Mail::to($order->shipping_email)->send(new OrderConfirmation($order));
-                    
-                } catch (\Exception $e) {
-                    \Log::error("Failed to send order confirmation email: " . $e->getMessage());
-                    // Continue even if email fails - don't break the order process
-                }
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Order created successfully',
@@ -187,8 +176,6 @@ class OrderController extends Controller
 
             // Clear cart
             Cart::where('user_id', $user->id)->delete();
-
-            // Send order confirmation email for COD/PayPal
             try {
                 // Reload order with relationships for email
                 $order = Order::with('items.product')->find($order->id);
@@ -293,13 +280,22 @@ class OrderController extends Controller
 
             if ($result['success'] && $result['status'] === 'paid') {
                 // Update order payment status
-                $order = Order::where('stripe_session_id', $request->session_id)->first();
+                $order = Order::where('stripe_session_id', $request->session_id)
+                    ->with(['items.product', 'user'])
+                    ->first();
                 
                 if ($order) {
                     $order->update([
                         'payment_status' => 'paid',
                         'status' => 'processing',
                     ]);
+
+                    // Send confirmation email AFTER successful payment
+                    try {
+                        Mail::to($order->shipping_email)->send(new OrderConfirmation($order));
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to send order confirmation email: " . $e->getMessage());
+                    }
                 }
 
                 return response()->json([
