@@ -417,7 +417,7 @@
 
             <!-- CTA Button -->
             <div class="cta-button">
-                <a href="{{ url('/orders/' . $order->id) }}">View My Orders</a>
+                <a href="{{ config('app.frontend_url') }}/orders/{{ $order->id }}">View My Orders</a>
             </div>
 
             <p class="message" style="text-align: center; font-size: 14px;">
